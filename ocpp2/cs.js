@@ -59,7 +59,7 @@ module.exports = function(RED) {
     // TODO: cmsm_pw should be CS specific
     this.csms_user = config.csms_user;
     this.csms_pw = config.csms_pw;
-    this.messageTimeout = config.messageTimeout || 5000;
+    this.messageTimeout = config.messageTimeout || 10000;
     this.auto_connect = config.auto_connect;
 
     const node = this;
@@ -162,6 +162,7 @@ module.exports = function(RED) {
         msg.payload.command = msgParsed[msgAction];
         msg.payload.data = msgParsed[msgRequestPayload];
 
+        /*
         let to = setTimeout(function(id) {
           // node.log("kill:" + id);
           if (ee.listenerCount(id) > 0) {
@@ -172,17 +173,18 @@ module.exports = function(RED) {
         }, 120 * 1000, id);
 
         // This makes the response async so that we pass the responsibility onto the response node
+        /*
         ee.once(id, function(returnMsg) {
           clearTimeout(to);
           response[msgType] = RESPONSE; 
           response[msgId] = msgParsed[msgId];
           response[msgResonsePayload] = returnMsg;
-
           //logger.log(msgTypeStr[response[msgType]], JSON.stringify(response).replace(/,/g, ', '));
 
           ws.send(JSON.stringify(response));
 
         });
+        */
         node.status({fill: 'green', shape: 'dot', text: `message in: ${msg.ocpp.command}`});
         debug_cs(`${ws.url} : message in: ${msg.ocpp.command}`);
         node.send(msg);
@@ -252,48 +254,82 @@ module.exports = function(RED) {
         //logger.log(msgTypeStr[request[msgType]], JSON.stringify(request).replace(/,/g, ', '));
       } else if ( node.wsconnected == true){
         if (ocpp2[msgType] == REQUEST){
-          ocpp2[msgAction] = msg.payload.command || node.command;
+          ocpp2[msgAction] = msg.payload.command || null;
+          ocpp2[msgRequestPayload] = msg.payload.data || {};
+          ocpp2[msgId] = msg.payload.MessageId || crypto.randomUUID();
 
+          // Check for missing command in object
           if (!ocpp2[msgAction]){
             const errStr = 'ERROR: Missing Command in JSON request message';
             node.error(errStr);
-            debug(errStr);
+            done(errStr);
             return;
           }
 
-          let cmddata;
-          if (node.cmddata){
-            try {
-              cmddata = JSON.parse(node.cmddata);
-            } catch (e){
-              node.warn('OCPP JSON client node invalid payload.data for message (' + msg.ocpp.command + '): ' + e.message);
+          // Check valididty of the command schema
+          //
+          let schemaName = `${ocpp2[msgAction]}Request.json`;
+
+          let schemaPath = path.join(__dirname, 'schemas', schemaName)
+
+          // By first checking if the file exists, we check that the command is an
+          // acutal ocpp2.0.1 command
+          if (fs.existsSync(schemaPath)){
+            let schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
+
+            let val = schema_val.validate(ocpp2[msgRequestPayload],schema);
+
+            if (val.errors.length > 0) {
+              let invalidOcpp2 = val.errors;
+              done(invalidOcpp2);
+              node.error({invalidOcpp2});
               return;
             }
-
+          } else {
+            let errMsg = `Invalid OCPP2.0.1 command: ${ocpp2[msgAction]}`;
+            node.error(errMsg);
+            done(errMsg);
+            return;
           }
 
-          ocpp2[msgRequestPayload] = msg.payload.data || cmddata || {};
+          ocpp2[msgAction] = msg.payload.command; // || node.command;
+
+
+//          let cmddata;
+//          if (node.cmddata){
+//            try {
+//              cmddata = JSON.parse(node.cmddata);
+//            } catch (e){
+//              node.warn('OCPP JSON client node invalid payload.data for message (' + msg.ocpp.command + '): ' + e.message);
+//              return;
+//            }
+//          }
+
+          ocpp2[msgRequestPayload] = msg.payload.data || {}; // cmddata || {};
           if (!ocpp2[msgRequestPayload]){
             const errStr = 'ERROR: Missing Data in JSON request message';
             node.error(errStr);
-            debug(errStr);
+            done(errStr);
+            debug_cs(errStr);
             return;
           }
 
-          let id = request[msgId];
-          cmdIdMap.set(id) = ocpp2[msgAction];
-          setTimeout( function(id){
+          let id = ocpp2[msgId];
+          cmdIdMap.set(id, { cbId: msg.payload.cbId, command: ocpp2[msgAction], time: new Date() });
+          setTimeout( function(){
             if (cmdIdMap.has(id)){
               let expCmd = cmdIdMap.get(id);
-              debug_cs(`Expired Message Req: id:${id}, cmd:${expCmd}`);
+              debug_cs(`Expired Req: id: ${id}, cbId: ${expCmd.cbId} cmd: ${expCmd.command}`);
               cmdIdMap.delete(id);
             }
-          }, node.messageTimout);
+          }, node.messageTimeout,id);
 
-          debug_cs(`Sending message: ${ocpp2[msgAction]}, ${request}`);
-          node.status({fill: 'green', shape: 'dot', text: `request out: ${ocpp2[msgAction]}`});
+          let ocpp_msg = JSON.stringify(ocpp2);
+          debug_cs(`Sending message: ${ocpp_msg}`);
+          ws.send(ocpp_msg);
+          node.status({fill: 'green', shape: 'dot', text: `REQ out: ${ocpp2[msgAction]}`});
           
-        } else {
+        } else { // Assuming the call is a RESPONSE to an existing REQUEST
           ocpp2[msgResonsePayload] = msg.payload.data || {};
           debug(`Sending response message: ${JSON.stringify(ocpp2[msgResonsePayload])}`);
           node.status({fill: 'green', shape: 'dot', text: 'sending response'});
