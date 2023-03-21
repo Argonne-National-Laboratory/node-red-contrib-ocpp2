@@ -1,0 +1,84 @@
+<style>
+    .header {
+        text-decoration: underline;
+        font-weight: bold;
+        margin-top: 5px;
+    }
+    .bordered {
+        padding-left: 12px;
+        padding-top: 4px;
+        border: 1px solid lightgrey;
+        box-sizing: border-box;
+    }
+</style>
+
+<script type="text/javascript">
+    RED.nodes.registerType('CSMS', {
+        category: 'OCPP',
+        color: '#16ccff',
+        defaults: {
+            name: {value: "", required: false},
+            port: {value: "", required: true, validate: RED.validators.number()},
+            path: {value: "", required: false},
+            ws_user: { value: "", required: true},
+            ws_pw: { value: "", required: true},
+            log: { value: false, required: true },
+            logpath: {value: "", required: false}
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "csms.svg",
+        label: function() {
+            return this.name||"CSMS";
+        }
+
+    });
+
+</script>
+
+<script type="text/x-red" data-template-name="CSMS">
+
+    <div class="form-row">
+        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name (defaults to OCPP Server:<PORT>)" >
+    </div>
+    
+    <div class="form-row">
+            <label for="node-input-port"><i class="icon-tag"></i> Port</label>
+            <input type="number" id="node-input-port" placeholder="Port Number (example: 8080)" />
+    </div>
+    <div id="container16j" class="form-row">
+      <label for="node-input-path" ><i class="icon-globe"></i> Path</label>
+      <input type="text" id="node-input-path" placeholder="CSMS url path (example: /ocpp2)">
+    </div>
+    <div class="header">Authentication</div>
+    <div id="container16j" class="form-row">
+      <label for="node-input-ws_user"<i class="icon-globe"></i> Login</label>
+      <input type="text" id="node-input-ws_user" placeholder="username">
+    </div>
+    <div id="container16j" class="form-row">
+      <label for="node-input-ws_pw" ><i class="icon-globe"></i> Password</label>
+      <input type="password" id="node-input-ws_pw" placeholder="password">
+    </div>
+    <div class="header">Logging</div>
+    <div class="bordered">
+        <div class="checkbox">
+            <label>
+                <input type="checkbox" value="" id="node-input-log"/>
+                logging enabled
+            </label>
+        </div>
+        <div id="containerlog" class="form-row">
+            <label for="node-input-pathlog" >
+                <i class="icon-globe"></i> Path
+            </label>
+            <input type="text" id="node-input-pathlog" placeholder="log file path and name" />
+        </div>
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="CSMS">
+    <p>OCPP 2.0.1 CSMS</p>
+
+</script>
+

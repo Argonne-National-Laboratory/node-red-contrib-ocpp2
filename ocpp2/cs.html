@@ -1,0 +1,71 @@
+<style>
+    .header {
+        text-decoration: underline;
+        font-weight: bold;
+        margin-top: 5px;
+    }
+    .bordered {
+        padding-left: 12px;
+        padding-top: 4px;
+        border: 1px solid lightgrey;
+        box-sizing: border-box;
+    }
+</style>
+<script type="text/javascript">
+    RED.nodes.registerType('CS', {
+        category: 'OCPP',
+        color: '#16ccff',
+        defaults: {
+            csms_url: {value: "", required: true},
+            csms_user: {value: "", required: false},
+            csms_pw: {value: "", required: false},
+            cbid: {value: "", required: true},
+            name: {value: ""},
+            auto_connect: {value: true}
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: 'cs.svg',
+        label: function() {
+            return this.name||this.cbid||"CS";
+        }
+
+    });
+
+</script>
+
+<script type="text/x-red" data-template-name='CS'>
+
+    <div class="form-row">
+        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name (defaults to OCPP Server:<PORT>)" >
+    </div>
+    
+    <div class="form-row">
+        <label for="node-input-cbid"><i class="icon-tag"></i> cbid</label>
+        <input type="text" id="node-input-cbid" placeholder="CS Charge Box Id" >
+    </div>
+    <div class="header">CSMS</div>
+    <div class="form-row">
+        <label for="node-input-csms_url"><i class="icon-tag"></i> Url</label>
+        <input type="text" id="node-input-csms_url" placeholder="CSMS url (no trailing slash)" >
+    </div>
+    <div class="form-row">
+        <label for="node-input-csms_user"><i class="icon-tag"></i> Login</label>
+        <input type="text" id="node-input-csms_user" placeholder="username" >
+    </div>
+    <div class="form-row">
+        <label for="node-input-csms_pw"><i class="icon-tag"></i> Password</label>
+        <input type="password" id="node-input-csms_pw" placeholder="password" >
+    </div>
+    <div class="form-row">
+        <label for="node-input-auto_connect"><i class="icon-tag"></i> Auto Connect</label>
+        <input type="checkbox" id="node-input-auto_connect" >
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name='CS'>
+    <p>OCPP 2.0.1 Charging Station</p>
+
+</script>
+
