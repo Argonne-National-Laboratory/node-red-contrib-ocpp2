@@ -25,7 +25,7 @@ const crypto = require('crypto');
 const proc = require('node:process');
 
 //const Logger = require('./utils/logdata');
-const debug_csms = require('debug')('anl:ocpp2:csms');
+const debug = require('debug')('anl:ocpp2:csms');
 const debug_csresponse = require('debug')('anl:ocpp2:cs:response');
 const debug_csrequest = require('debug')('anl:ocpp2:cs:request:json');
 
@@ -66,7 +66,7 @@ module.exports = function(RED) {
     const expressServer = express();
 
     node.status({ fill: 'blue', shape: 'ring', text: 'CSMS 2.0.1' });
-    debug_csms('Starting OCPP2.0.1 CSMS');
+    debug('Starting OCPP2.0.1 CSMS');
     // TODO: Should support a p/w for each CS.
     // TODO: Option to use single p/w signon:
     //
@@ -80,7 +80,7 @@ module.exports = function(RED) {
     const wsOptions = {
       handleProtocols: function(protocols, request) {
         const requiredSubProto = 'ocpp2.0.1';
-        debug_csms(`SubProtocols: [${protocols}]`);
+        debug(`SubProtocols: [${protocols}]`);
         return protocols.includes(requiredSubProto) ? requiredSubProto : false;
       },
     };
@@ -94,27 +94,40 @@ module.exports = function(RED) {
         let cbId = req.params.cbId;
 
         connMap.set(cbId, { since: new Date(), ws });
-        debug_csms(`Message from ${cbId}`);
+        debug(`Message from ${cbId}`);
         let cnt = connMap.size;
         node.status({ fill: 'green', shape: 'ring', text: `(${cnt})` });
 
         ws.on('open', function() {
-          debug_csms(`Got an ws.open for ${cbId}`);
+          debug(`Got an ws.open for ${cbId}`);
         });
         ws.on('close', function() {
-          debug_csms(`Got an ws.close for ${cbId}`);
+          debug(`Got an ws.close for ${cbId}`);
           connMap.delete(cbId)
           let cnt = connMap.size;
           node.status({ fill: 'green', shape: 'ring', text: `(${cnt})` });
         });
         ws.on('error', function() {
-          debug_csms(`Got an ws.error for ${cbId}`);
+          debug(`Got an ws.error for ${cbId}`);
         });
 
         ws.on('message', function(msgIn){
-          debug_csms(`Get a message from ${cbId}: ${msgIn}`);
-          let ocpp2 = JSON.parse(msgIn);
+          debug(`Get a message from ${cbId}: ${msgIn}`);
+          // let ocpp2 = JSON.parse(msgIn);
+          //
+          let ocpp2;
 
+          //////////////////////////////
+          // This should never happen //
+          // ..but I've seen EVSEs    //
+          // do it..                  //
+          /////////////////////////////
+          if (msgIn[0] != '[') {
+            ocpp2 = JSON.parse('[' + msgIn + ']');
+          } else {
+            ocpp2 = JSON.parse(msgIn);
+          }
+          
           let msgTypeStr = ['Request','Response','Error'][ocpp2[msgType]-2];
 
           // REQUEST, RESPONSE, or ERROR?
@@ -124,6 +137,7 @@ module.exports = function(RED) {
             msg.ocpp = {};
             msg.payload = {};
 
+            msg.ocpp.ocppVersion = '2.0.1';
 
             switch (ocpp2[msgType]){
               case REQUEST:
@@ -136,7 +150,7 @@ module.exports = function(RED) {
                 setTimeout( function(){
                   if (cmdIdMap.has(id)){
                     let expCmd = cmdIdMap.get(id);
-                    debug_csms(`Expired Req: id: ${id}, cbId: ${expCmd.cbId} cmd: ${expCmd.command}`);
+                    debug(`Expired Req: id: ${id}, cbId: ${expCmd.cbId} cmd: ${expCmd.command}`);
                     cmdIdMap.delete(id);
                   }
                 }, node.messageTimeout,id);
@@ -147,7 +161,7 @@ module.exports = function(RED) {
                   msg.payload.command = cmdIdMap.get(ocpp2[msgId]).command;
                 } else {
                   let errMsg = `Expired or invalid RESPONSE: ${ocpp2[msgId]}`;
-                  debug_csms(errMsg);
+                  debug(errMsg);
                   node.error(errMsg);
                   return;
                 }
@@ -155,7 +169,7 @@ module.exports = function(RED) {
             }
 
             msg.topic = `${cbId}/${msgTypeStr}`;
-            debug_csms(msg.topic);
+            debug(msg.topic);
 
             msg.ocpp.command = msg.payload.command;
             msg.ocpp.cbId = cbId;
@@ -164,7 +178,7 @@ module.exports = function(RED) {
             //
             let schemaName = `${msg.payload.command}${msgTypeStr}.json`;
 
-            debug_csms(`COMMAND SCHEMA: ${schemaName}`);
+            debug(`COMMAND SCHEMA: ${schemaName}`);
 
             let schemaPath = path.join(__dirname, 'schemas', schemaName)
 
@@ -205,7 +219,7 @@ module.exports = function(RED) {
     ////////////////////////////////////////////
 
     node.on('input', function(msg,send,done) {
-      debug_csms(msg.payload);
+      debug(msg.payload);
 
       let ocpp2 = [];
 
@@ -225,7 +239,7 @@ module.exports = function(RED) {
       }
       let cbId = msg.payload.cbId;
 
-      debug_csms(JSON.stringify(msg));
+      debug(JSON.stringify(msg));
 
       ocpp2[msgType] = msg.payload.msgType || REQUEST;
       ocpp2[msgId] = msg.payload.MessageId || crypto.randomUUID();
@@ -240,7 +254,7 @@ module.exports = function(RED) {
 
         if (!ocpp2[msgAction]){
           const errStr = 'ERROR: Missing Control Command in JSON request message';
-          debug_csms(errStr);
+          debug(errStr);
           node.error(errStr);
           done(errStr);
           return;
@@ -343,7 +357,7 @@ module.exports = function(RED) {
             const errStr = 'ERROR: Missing Data in JSON request message';
             node.error(errStr);
             done(errStr);
-            debug_csms(errStr);
+            debug(errStr);
             return;
           }
 
@@ -352,13 +366,13 @@ module.exports = function(RED) {
           setTimeout( function(){
             if (cmdIdMap.has(id)){
               let expCmd = cmdIdMap.get(id);
-              debug_csms(`Expired Req: id: ${id}, cbId: ${expCmd.cbId} cmd: ${expCmd.command}`);
+              debug(`Expired Req: id: ${id}, cbId: ${expCmd.cbId} cmd: ${expCmd.command}`);
               cmdIdMap.delete(id);
             }
           }, node.messageTimeout,id);
 
           let ocpp_msg = JSON.stringify(ocpp2);
-          debug_csms(`Sending message: ${ocpp_msg}`);
+          debug(`Sending message: ${ocpp_msg}`);
           cb_ws.send(ocpp_msg);
           node.status({fill: 'green', shape: 'dot', text: `REQ out: ${ocpp2[msgAction]}`});
 
@@ -394,7 +408,7 @@ module.exports = function(RED) {
                 //done(`OCPP Validation Errors: ${val.errors}`);
                 return;
               }
-              debug_csms('SHOULD NOT REACH HERE');
+              debug('SHOULD NOT REACH HERE');
 
             } else {
               let errMsg = `Invalid OCPP2.0.1 command: ${msgAction}`;
@@ -413,7 +427,7 @@ module.exports = function(RED) {
 
 
           let ocpp_msg = JSON.stringify(ocpp2);
-          debug_csms(`Sending message: ${ocpp_msg}`);
+          debug(`Sending message: ${ocpp_msg}`);
           cb_ws.send(ocpp_msg);
           node.status({fill: 'green', shape: 'dot', text: `RES out: ${msgAction}`});
         }

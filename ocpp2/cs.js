@@ -22,7 +22,7 @@ const events = require('events');
 const crypto = require('crypto');
 
 //const Logger = require('./utils/logdata');
-const debug_cs = require('debug')('anl:ocpp2:cs');
+const debug = require('debug')('anl:ocpp2:cs');
 
 const EventEmitter = events.EventEmitter;
 const REQEVTPOSTFIX = '::REQUEST';
@@ -73,7 +73,7 @@ module.exports = function(RED) {
     csmsURL.username = node.csms_user;
     csmsURL.password = node.csms_pw;
     csmsURL.pathname = path.join(csmsURL.pathname,node.cbId);
-    debug_cs(csmsURL.href);
+    debug(csmsURL.href);
     
     const options = {
       WebSocket: Websocket, // custom WebSocket constructor
@@ -108,8 +108,8 @@ module.exports = function(RED) {
       msg.ocpp = {};
       msg.payload = {};
       //logger.log('info', `Closing websocket connection to ${csms_url}`);
-      debug_cs('Websocket closed: code ', {code});
-      debug_cs('Websocket closed: reason ', {reason});
+      debug('Websocket closed: code ', {code});
+      debug('Websocket closed: reason ', {reason});
       node.status({fill: 'red', shape: 'dot', text: 'Closed...'});
       node.wsconnected = false;
       msg.ocpp.websocket = 'OFFLINE';
@@ -127,80 +127,105 @@ module.exports = function(RED) {
 
     ws.addEventListener('error', function(err){
       node.log('Websocket error:', {err});
-      debug_cs('Websocket error:', {err});
+      debug('Websocket error:', {err});
     });
 
     ws.addEventListener('message', function(event) {
       let msgIn = event.data;
-      let msg = {};
-      msg.ocpp = {};
-      msg.payload = {};
+      let cbId = node.cbId;
+      debug(`Get a message from CSMS: ${msgIn}`);
+      // let ocpp2 = JSON.parse(msgIn);
+      //
+      let ocpp2;
 
-      msg.ocpp.ocppVersion = '2.0.1';
-
-      let response = [];
-      let id = crypto.randomUUID();
-
-      let msgParsed;
-
-
-
-
+      //////////////////////////////
+      // This should never happen //
+      // ..but I've seen EVSEs    //
+      // do it..                  //
+      /////////////////////////////
       if (msgIn[0] != '[') {
-        msgParsed = JSON.parse('[' + msgIn + ']');
+        ocpp2 = JSON.parse('[' + msgIn + ']');
       } else {
-        msgParsed = JSON.parse(msgIn);
+        ocpp2 = JSON.parse(msgIn);
       }
 
-      let msgTypeStr = ['Request','Response','Error'][msgParsed[msgType]-2];
-      //logger.log(msgTypeStr[msgParsed[msgType]], JSON.stringify(msgParsed));
+      let msgTypeStr = ['Request','Response','Error'][ocpp2[msgType]-2];
 
-      if (msgParsed[msgType] == REQUEST) {
-        debug_cs(`Got a REQUEST Message ${msgParsed[msgId]}`);
-        // msg.msgId = msgParsed[msgId];
-        msg.msgId = id;
-        msg.ocpp.MessageId = msgParsed[msgId];
-        msg.ocpp.msgType = REQUEST;
-        msg.ocpp.command = msgParsed[msgAction];
-        msg.payload.command = msgParsed[msgAction];
-        msg.payload.data = msgParsed[msgRequestPayload];
+      // REQUEST, RESPONSE, or ERROR?
+      //
+      if (ocpp2[msgType] == REQUEST || ocpp2[msgType] == RESPONSE){
+        let msg = {};
+        msg.ocpp = {};
+        msg.payload = {};
 
-        node.status({fill: 'green', shape: 'dot', text: `message in: ${msg.ocpp.command}`});
-        
-        debug_cs(`${ws.url} : message in: ${msg.ocpp.command}`);
-        msg.topic = `${node.cbId}/${msgTypeStr}`;
-        node.send(msg,msg);
-      } else if (msgParsed[msgType] == RESPONSE) {
-        debug_cs(`Got a RESPONSE msgId ${msgParsed[msgId]}`);
-        msg.msgId = msgParsed[msgId];
-        msg.ocpp.MessageId = msgParsed[msgId];
-        msg.ocpp.msgType = RESPONSE;
-        msg.payload.data = msgParsed[msgResponsePayload];
+        msg.ocpp.ocppVersion = '2.0.1';
 
-        if (node.wsconnected == true) {
-          msg.ocpp.websocket = 'ONLINE';
-        } else {
-          msg.ocpp.websocket = 'OFFLINE';
+        switch (ocpp2[msgType]){
+          case REQUEST:
+            msg.payload.data = ocpp2[msgRequestPayload] || {}; 
+            msg.payload.command = ocpp2[msgAction] || null; 
+            msg.payload.MessageId = ocpp2[msgId];
+            msg.ocpp.MessageId = ocpp2[msgId];
+            let id = ocpp2[msgId];
+            cmdIdMap.set(id, { cbId: msg.payload.cbId, command: ocpp2[msgAction], time: new Date() });
+            setTimeout( function(){
+              if (cmdIdMap.has(id)){
+                let expCmd = cmdIdMap.get(id);
+                debug(`Expired Req: id: ${id}, cbId: ${expCmd.cbId} cmd: ${expCmd.command}`);
+                cmdIdMap.delete(id);
+              }
+            }, node.messageTimeout,id);
+            break;
+          case RESPONSE:
+            msg.payload.data = ocpp2[msgResponsePayload] || {};
+            if (cmdIdMap.has(ocpp2[msgId])){
+              msg.payload.command = cmdIdMap.get(ocpp2[msgId]).command;
+            } else {
+              let errMsg = `Expired or invalid RESPONSE: ${ocpp2[msgId]}`;
+              debug(errMsg);
+              node.error(errMsg);
+              return;
+            }
+            break;
         }
 
-        if (cmdIdMap.has(msg.msgId)){
-          let cmd = cmdIdMap.get(msg.msgId);
-          msg.ocpp.command = cmd;
-          if (cmd.hasOwnProperty('target') && cmd.target != ''){
-            msg.target = cmd.target;
+        msg.topic = `${cbId}/${msgTypeStr}`;
+        debug(msg.topic);
+
+        msg.ocpp.command = msg.payload.command;
+        msg.ocpp.cbId = cbId;
+
+        // Check valididty of the command schema
+        //
+        let schemaName = `${msg.payload.command}${msgTypeStr}.json`;
+
+        debug(`COMMAND SCHEMA: ${schemaName}`);
+
+        let schemaPath = path.join(__dirname, 'schemas', schemaName)
+
+        // By first checking if the file exists, we check that the command is an
+        // acutal ocpp2.0.1 command
+        if (fs.existsSync(schemaPath)){
+          let schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
+
+          let val = schema_val.validate(ocpp2[msgRequestPayload],schema);
+
+          if (val.errors.length > 0) {
+            let invalidOcpp2 = val.errors;
+            done(invalidOcpp2);
+            node.error({invalidOcpp2});
+            return;
           }
-          debug_cs(JSON.stringify(cmd)); 
-          cmdIdMap.delete(msg.msgId);
         } else {
-          msg.ocpp.command = 'unknown';
+          let errMsg = `Invalid OCPP2.0.1 command: ${ocpp2[msgAction]}`;
+          node.error(errMsg);
+          done(errMsg);
+          return;
         }
 
-        msg.topic = `${node.cbId}/${msgTypeStr}`;
-        node.status({fill: 'green', shape: 'dot', text: `response in: ${msg.ocpp.command}`});
-        debug_cs(`response in: ${msg.ocpp.command}`);
-        node.send(msg,msg);
-
+        node.send(msg);
       }
+
     });
 
     ////////////////////////////////////////////
@@ -212,7 +237,7 @@ module.exports = function(RED) {
 
       let ocpp2 = [];
 
-      debug_cs(JSON.stringify(msg));
+      debug(JSON.stringify(msg));
 
       ocpp2[msgType] = msg.payload.msgType || REQUEST;
       ocpp2[msgId] = msg.payload.MessageId || crypto.randomUUID();
@@ -224,7 +249,7 @@ module.exports = function(RED) {
         if (!ocpp2[msgAction]){
           const errStr = 'ERROR: Missing Control Command in JSON request message';
           node.error(errStr);
-          debug_cs(errStr);
+          debug(errStr);
           return;
         }
 
@@ -293,7 +318,7 @@ module.exports = function(RED) {
             const errStr = 'ERROR: Missing Data in JSON request message';
             node.error(errStr);
             done(errStr);
-            debug_cs(errStr);
+            debug(errStr);
             return;
           }
 
@@ -302,13 +327,13 @@ module.exports = function(RED) {
           setTimeout( function(){
             if (cmdIdMap.has(id)){
               let expCmd = cmdIdMap.get(id);
-              debug_cs(`Expired Req: id: ${id}, cbId: ${expCmd.cbId} cmd: ${expCmd.command}`);
+              debug(`Expired Req: id: ${id}, cbId: ${expCmd.cbId} cmd: ${expCmd.command}`);
               cmdIdMap.delete(id);
             }
           }, node.messageTimeout,id);
 
           let ocpp_msg = JSON.stringify(ocpp2);
-          debug_cs(`Sending message: ${ocpp_msg}`);
+          debug(`Sending message: ${ocpp_msg}`);
           ws.send(ocpp_msg);
           node.status({fill: 'green', shape: 'dot', text: `REQ out: ${ocpp2[msgAction]}`});
           
@@ -360,7 +385,7 @@ module.exports = function(RED) {
 
 
           let ocpp_msg = JSON.stringify(ocpp2);
-          debug_cs(`Sending message: ${ocpp_msg}`);
+          debug(`Sending message: ${ocpp_msg}`);
           ws.send(ocpp_msg,ocpp_msg);
           node.status({fill: 'green', shape: 'dot', text: `RES out: ${msgAction}`});
         }
