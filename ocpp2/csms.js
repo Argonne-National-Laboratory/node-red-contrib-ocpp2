@@ -61,7 +61,7 @@ module.exports = function(RED) {
 
     const node = this;
 
-    const wspath = `${node.path}/:cbid`;
+    const wspath = `${node.path}/:cbId`;
 
     const expressServer = express();
 
@@ -91,48 +91,60 @@ module.exports = function(RED) {
 
     const server = expressServer.listen(node.port, function() {
       expressServer.ws(wspath, function(ws, req, next) {
-        let cbid = req.params.cbid;
+        let cbId = req.params.cbId;
 
-        connMap.set(cbid, { since: new Date(), ws });
-        debug_csms(`Message from ${cbid}`);
+        connMap.set(cbId, { since: new Date(), ws });
+        debug_csms(`Message from ${cbId}`);
         let cnt = connMap.size;
         node.status({ fill: 'green', shape: 'ring', text: `(${cnt})` });
 
         ws.on('open', function() {
-          debug_csms(`Got an ws.open for ${cbid}`);
+          debug_csms(`Got an ws.open for ${cbId}`);
         });
         ws.on('close', function() {
-          debug_csms(`Got an ws.close for ${cbid}`);
-          connMap.delete(cbid)
+          debug_csms(`Got an ws.close for ${cbId}`);
+          connMap.delete(cbId)
           let cnt = connMap.size;
           node.status({ fill: 'green', shape: 'ring', text: `(${cnt})` });
         });
         ws.on('error', function() {
-          debug_csms(`Got an ws.error for ${cbid}`);
+          debug_csms(`Got an ws.error for ${cbId}`);
         });
 
         ws.on('message', function(msgIn){
-          debug_csms(`Get a message from ${cbid}: ${msgIn}`);
+          debug_csms(`Get a message from ${cbId}: ${msgIn}`);
           let ocpp2 = JSON.parse(msgIn);
+
+          let msgTypeStr = ['Request','Response','Error'][ocpp2[msgType]-2];
+
           // REQUEST, RESPONSE, or ERROR?
           //
           if (ocpp2[msgType] == REQUEST || ocpp2[msgType] == RESPONSE){
             let msg = {};
             msg.ocpp = {};
             msg.payload = {};
-            let msgTypeStr = 'Request';
 
 
             switch (ocpp2[msgType]){
               case REQUEST:
                 msg.payload.data = ocpp2[msgRequestPayload] || {}; 
                 msg.payload.command = ocpp2[msgAction] || null; 
+                msg.payload.MessageId = ocpp2[msgId];
+                msg.ocpp.MessageId = ocpp2[msgId];
+                let id = ocpp2[msgId];
+                cmdIdMap.set(id, { cbId: msg.payload.cbId, command: ocpp2[msgAction], time: new Date() });
+                setTimeout( function(){
+                  if (cmdIdMap.has(id)){
+                    let expCmd = cmdIdMap.get(id);
+                    debug_csms(`Expired Req: id: ${id}, cbId: ${expCmd.cbId} cmd: ${expCmd.command}`);
+                    cmdIdMap.delete(id);
+                  }
+                }, node.messageTimeout,id);
                 break;
               case RESPONSE:
                 msg.payload.data = ocpp2[msgResponsePayload] || {};
                 if (cmdIdMap.has(ocpp2[msgId])){
                   msg.payload.command = cmdIdMap.get(ocpp2[msgId]).command;
-                  msgTypeStr = 'Response';
                 } else {
                   let errMsg = `Expired or invalid RESPONSE: ${ocpp2[msgId]}`;
                   debug_csms(errMsg);
@@ -141,11 +153,18 @@ module.exports = function(RED) {
                 }
                 break;
             }
+
+            msg.topic = `${cbId}/${msgTypeStr}`;
+            debug_csms(msg.topic);
+
             msg.ocpp.command = msg.payload.command;
+            msg.ocpp.cbId = cbId;
 
             // Check valididty of the command schema
             //
             let schemaName = `${msg.payload.command}${msgTypeStr}.json`;
+
+            debug_csms(`COMMAND SCHEMA: ${schemaName}`);
 
             let schemaPath = path.join(__dirname, 'schemas', schemaName)
 
@@ -198,7 +217,7 @@ module.exports = function(RED) {
       }
 
       if (!msg.payload.hasOwnProperty('cbId')){
-        if (msg.hasOwnProperty('ocpp') && msg.ocpp.hasOwnProptery('cbId')){
+        if (msg.hasOwnProperty('ocpp') && msg.ocpp.hasOwnProperty('cbId')){
           msg.payload.cbId = msg.ocpp.cbId;
         }else{
           msg.payload.cbId = '';
@@ -217,7 +236,7 @@ module.exports = function(RED) {
 
       if (ocpp2[msgType] == CONTROL){
 
-        ocpp2[msgAction] = msg.payload.command || node.command;
+        ocpp2[msgAction] = msg.payload.command || null; // || node.command;
 
         if (!ocpp2[msgAction]){
           const errStr = 'ERROR: Missing Control Command in JSON request message';
@@ -262,7 +281,7 @@ module.exports = function(RED) {
         // Only "send" if the websocket is assigned to the chargeBoxId cbId
         //
       } else if (connMap.has(msg.payload.cbId)){
-        // Not able to locate this cbid in the connection map
+        // Not able to locate this cbId in the connection map
         // This section will make a request call to a CS
         //
 
@@ -355,7 +374,7 @@ module.exports = function(RED) {
 
             // Check valididty of the command schema
             //
-            let msgAction = cmdIdMap.get(ocpp2[msgId]);
+            let msgAction = cmdIdMap.get(ocpp2[msgId]).command;
             let schemaName = `${msgAction}Response.json`;
 
             let schemaPath = path.join(__dirname, 'schemas', schemaName)
@@ -378,7 +397,7 @@ module.exports = function(RED) {
               debug_csms('SHOULD NOT REACH HERE');
 
             } else {
-              let errMsg = `Invalid OCPP2.0.1 command: ${ocpp2[msgAction]}`;
+              let errMsg = `Invalid OCPP2.0.1 command: ${msgAction}`;
               node.error(errMsg);
               done(errMsg);
               return;
@@ -393,11 +412,13 @@ module.exports = function(RED) {
           }
 
 
-          debug_csms(`Sending response message: ${JSON.stringify(ocpp2[msgResonsePayload])}`);
-          node.status({fill: 'green', shape: 'dot', text: 'sending response'});
+          let ocpp_msg = JSON.stringify(ocpp2);
+          debug_csms(`Sending message: ${ocpp_msg}`);
+          cb_ws.send(ocpp_msg);
+          node.status({fill: 'green', shape: 'dot', text: `RES out: ${msgAction}`});
         }
       } else {
-        // Not able to locate this cbid in the connection map
+        // Not able to locate this cbId in the connection map
         let err_msg = `ChargeBoxId "${cbId}" is not connected`;
         node.error(err_msg);
         done(err_msg);

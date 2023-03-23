@@ -53,10 +53,11 @@ module.exports = function(RED) {
 
     // Copy in the config values
     // 
-    this.cbid = config.cbid;
+    this.cbId = config.cbId;
     this.csms_url = config.csms_url;
-    // TODO: csms users is required to be same as cbid
+    // TODO: csms users is required to be same as cbId
     // TODO: cmsm_pw should be CS specific
+    // TODO: need to support updating pw from input
     this.csms_user = config.csms_user;
     this.csms_pw = config.csms_pw;
     this.messageTimeout = config.messageTimeout || 10000;
@@ -71,7 +72,7 @@ module.exports = function(RED) {
     csmsURL.protocol = 'ws';
     csmsURL.username = node.csms_user;
     csmsURL.password = node.csms_pw;
-    csmsURL.pathname = path.join(csmsURL.pathname,node.cbid);
+    csmsURL.pathname = path.join(csmsURL.pathname,node.cbId);
     debug_cs(csmsURL.href);
     
     const options = {
@@ -92,7 +93,7 @@ module.exports = function(RED) {
       node.wsconnected = true;
       msg.ocpp.websocket = 'ONLINE';
       if (NetStatus != msg.ocpp.websocket) {
-        node.send(msg);//send update
+        node.send(msg,msg);//send update
         NetStatus = msg.ocpp.websocket;
       }
 
@@ -113,7 +114,7 @@ module.exports = function(RED) {
       node.wsconnected = false;
       msg.ocpp.websocket = 'OFFLINE';
       if (NetStatus != msg.ocpp.websocket) {
-        node.send(msg);//send update
+        node.send(msg,msg);//send update
         NetStatus = msg.ocpp.websocket;
       }
       // Stop the ping timer
@@ -130,7 +131,6 @@ module.exports = function(RED) {
     });
 
     ws.addEventListener('message', function(event) {
-      debug_cs('Got a message ');
       let msgIn = event.data;
       let msg = {};
       msg.ocpp = {};
@@ -144,12 +144,15 @@ module.exports = function(RED) {
       let msgParsed;
 
 
+
+
       if (msgIn[0] != '[') {
         msgParsed = JSON.parse('[' + msgIn + ']');
       } else {
         msgParsed = JSON.parse(msgIn);
       }
 
+      let msgTypeStr = ['Request','Response','Error'][msgParsed[msgType]-2];
       //logger.log(msgTypeStr[msgParsed[msgType]], JSON.stringify(msgParsed));
 
       if (msgParsed[msgType] == REQUEST) {
@@ -162,38 +165,17 @@ module.exports = function(RED) {
         msg.payload.command = msgParsed[msgAction];
         msg.payload.data = msgParsed[msgRequestPayload];
 
-        /*
-        let to = setTimeout(function(id) {
-          // node.log("kill:" + id);
-          if (ee.listenerCount(id) > 0) {
-            let evList = ee.listeners(id);
-            let x = evList[0];
-            ee.removeListener(id, x);
-          }
-        }, 120 * 1000, id);
-
-        // This makes the response async so that we pass the responsibility onto the response node
-        /*
-        ee.once(id, function(returnMsg) {
-          clearTimeout(to);
-          response[msgType] = RESPONSE; 
-          response[msgId] = msgParsed[msgId];
-          response[msgResonsePayload] = returnMsg;
-          //logger.log(msgTypeStr[response[msgType]], JSON.stringify(response).replace(/,/g, ', '));
-
-          ws.send(JSON.stringify(response));
-
-        });
-        */
         node.status({fill: 'green', shape: 'dot', text: `message in: ${msg.ocpp.command}`});
+        
         debug_cs(`${ws.url} : message in: ${msg.ocpp.command}`);
-        node.send(msg);
+        msg.topic = `${node.cbId}/${msgTypeStr}`;
+        node.send(msg,msg);
       } else if (msgParsed[msgType] == RESPONSE) {
         debug_cs(`Got a RESPONSE msgId ${msgParsed[msgId]}`);
         msg.msgId = msgParsed[msgId];
         msg.ocpp.MessageId = msgParsed[msgId];
         msg.ocpp.msgType = RESPONSE;
-        msg.payload.data = msgParsed[msgResonsePayload];
+        msg.payload.data = msgParsed[msgResponsePayload];
 
         if (node.wsconnected == true) {
           msg.ocpp.websocket = 'ONLINE';
@@ -202,19 +184,30 @@ module.exports = function(RED) {
         }
 
         if (cmdIdMap.has(msg.msgId)){
-          msg.ocpp.command = cmdIdMap.get(msg.msgId);
+          let cmd = cmdIdMap.get(msg.msgId);
+          msg.ocpp.command = cmd;
+          if (cmd.hasOwnProperty('target') && cmd.target != ''){
+            msg.target = cmd.target;
+          }
+          debug_cs(JSON.stringify(cmd)); 
           cmdIdMap.delete(msg.msgId);
         } else {
           msg.ocpp.command = 'unknown';
         }
 
+        msg.topic = `${node.cbId}/${msgTypeStr}`;
         node.status({fill: 'green', shape: 'dot', text: `response in: ${msg.ocpp.command}`});
         debug_cs(`response in: ${msg.ocpp.command}`);
-        node.send(msg);
+        node.send(msg,msg);
 
       }
     });
 
+    ////////////////////////////////////////////
+    // This section is for input from a the   //
+    // Node itself                            //
+    ////////////////////////////////////////////
+    
     node.on('input', function(msg, send, done){
 
       let ocpp2 = [];
@@ -295,16 +288,6 @@ module.exports = function(RED) {
           ocpp2[msgAction] = msg.payload.command; // || node.command;
 
 
-//          let cmddata;
-//          if (node.cmddata){
-//            try {
-//              cmddata = JSON.parse(node.cmddata);
-//            } catch (e){
-//              node.warn('OCPP JSON client node invalid payload.data for message (' + msg.ocpp.command + '): ' + e.message);
-//              return;
-//            }
-//          }
-
           ocpp2[msgRequestPayload] = msg.payload.data || {}; // cmddata || {};
           if (!ocpp2[msgRequestPayload]){
             const errStr = 'ERROR: Missing Data in JSON request message';
@@ -315,7 +298,7 @@ module.exports = function(RED) {
           }
 
           let id = ocpp2[msgId];
-          cmdIdMap.set(id, { cbId: msg.payload.cbId, command: ocpp2[msgAction], time: new Date() });
+          cmdIdMap.set(id, { cbId: msg.payload.cbId, command: ocpp2[msgAction], time: new Date(), target: msg.target || '' });
           setTimeout( function(){
             if (cmdIdMap.has(id)){
               let expCmd = cmdIdMap.get(id);
@@ -330,9 +313,56 @@ module.exports = function(RED) {
           node.status({fill: 'green', shape: 'dot', text: `REQ out: ${ocpp2[msgAction]}`});
           
         } else { // Assuming the call is a RESPONSE to an existing REQUEST
-          ocpp2[msgResonsePayload] = msg.payload.data || {};
-          debug(`Sending response message: ${JSON.stringify(ocpp2[msgResonsePayload])}`);
-          node.status({fill: 'green', shape: 'dot', text: 'sending response'});
+          ocpp2[msgResponsePayload] = msg.payload.data || {};
+          ocpp2[msgId] = msg.ocpp.MessageId;
+
+
+          if (cmdIdMap.has(ocpp2[msgId])){
+
+            let cbId = cmdIdMap.get(ocpp2[msgId]).cbId;
+
+            // Check valididty of the command schema
+            //
+            let msgAction = cmdIdMap.get(ocpp2[msgId]).command;
+            let schemaName = `${msgAction}Response.json`;
+
+            let schemaPath = path.join(__dirname, 'schemas', schemaName)
+
+            // By first checking if the file exists, we check that the command is an
+            // acutal ocpp2.0.1 command
+            if (fs.existsSync(schemaPath)){
+              let schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
+
+              let val = schema_val.validate(ocpp2[msgResponsePayload],schema);
+
+              if (val.errors.length > 0) {
+                //val.errors.forEach( (x) => { node.error({x}) });
+                let invalidOcpp2 = val.errors;
+                done(invalidOcpp2);
+                node.error({invalidOcpp2});
+                return;
+              }
+
+            } else {
+              let errMsg = `Invalid OCPP2.0.1 command: ${msgAction}`;
+              node.error(errMsg);
+              done(errMsg);
+              return;
+            }
+
+
+          }else{
+            let msgError = `Target message Id is missing or expired: ${ocpp2[msgId]}`;
+            node.error(msgError);
+            done(msgError);
+            return;
+          }
+
+
+          let ocpp_msg = JSON.stringify(ocpp2);
+          debug_cs(`Sending message: ${ocpp_msg}`);
+          ws.send(ocpp_msg,ocpp_msg);
+          node.status({fill: 'green', shape: 'dot', text: `RES out: ${msgAction}`});
         }
       }
     });
