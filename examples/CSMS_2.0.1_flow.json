@@ -1,0 +1,921 @@
+[
+    {
+        "id": "17b017b2265d4eef",
+        "type": "tab",
+        "label": "CSMS",
+        "disabled": false,
+        "info": "",
+        "env": [
+            {
+                "name": "HeartbeatInterval",
+                "value": "10",
+                "type": "num"
+            }
+        ]
+    },
+    {
+        "id": "68d0dd2e92d12502",
+        "type": "group",
+        "z": "17b017b2265d4eef",
+        "name": "CSMS",
+        "style": {
+            "label": true
+        },
+        "nodes": [
+            "e29e5f8c9f2b32c9",
+            "40ee8fb128010cea",
+            "3653f7a08aa0f7a0",
+            "ee7a50be4c51fb53",
+            "55352d0af3a31955",
+            "29a9c17758138182",
+            "4198e27f8248cadb"
+        ],
+        "x": 64,
+        "y": 159,
+        "w": 422,
+        "h": 182
+    },
+    {
+        "id": "f1c37ec2d8e7e211",
+        "type": "group",
+        "z": "17b017b2265d4eef",
+        "name": "A) Handle incoming request from CS",
+        "style": {
+            "label": true
+        },
+        "nodes": [
+            "4b54809f8a8114c4",
+            "e6a0a8f971aa53d0",
+            "4a65d1dc02dff13c",
+            "36cae579348b6754",
+            "7a2b0858e4d23951",
+            "003ef71c4c684772"
+        ],
+        "x": 794,
+        "y": 379,
+        "w": 532,
+        "h": 162
+    },
+    {
+        "id": "bb56e440777eaa4b",
+        "type": "group",
+        "z": "17b017b2265d4eef",
+        "name": "B) Response from request to CS",
+        "style": {
+            "label": true
+        },
+        "nodes": [
+            "508b6c15ae780a56",
+            "aaf68899c06156de",
+            "bb07af139633f86e",
+            "0cab2ef927dba560",
+            "a4f37bcfafb7281d",
+            "c0724317d71d4d11",
+            "4114685861aedfd4",
+            "8dbe7a5d9737b255"
+        ],
+        "x": 794,
+        "y": 559,
+        "w": 302,
+        "h": 282
+    },
+    {
+        "id": "5c8b79bc10876794",
+        "type": "junction",
+        "z": "17b017b2265d4eef",
+        "x": 304,
+        "y": 606,
+        "wires": [
+            [
+                "18429e1166d1aa9a"
+            ]
+        ]
+    },
+    {
+        "id": "e29e5f8c9f2b32c9",
+        "type": "CSMS",
+        "z": "17b017b2265d4eef",
+        "g": "68d0dd2e92d12502",
+        "name": "CMSM1",
+        "port": "8863",
+        "path": "/ocpp2",
+        "ws_user": "test",
+        "ws_pw": "test",
+        "log": false,
+        "logpath": "",
+        "x": 200,
+        "y": 240,
+        "wires": [
+            [
+                "40ee8fb128010cea",
+                "29a9c17758138182"
+            ],
+            [
+                "4198e27f8248cadb"
+            ]
+        ]
+    },
+    {
+        "id": "1607d150e6aa0d73",
+        "type": "inject",
+        "z": "17b017b2265d4eef",
+        "name": "Get connections",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"msgType\":99,\"command\":\"connections\"}",
+        "payloadType": "json",
+        "x": 160,
+        "y": 480,
+        "wires": [
+            [
+                "5c8b79bc10876794"
+            ]
+        ]
+    },
+    {
+        "id": "40ee8fb128010cea",
+        "type": "debug",
+        "z": "17b017b2265d4eef",
+        "g": "68d0dd2e92d12502",
+        "name": "CSMS out",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 370,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "e50da5359763697b",
+        "type": "inject",
+        "z": "17b017b2265d4eef",
+        "name": "Reset CS1",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"msgType\":2,\"command\":\"Reset\",\"cbId\":\"CS1\",\"data\":{\"type\":\"Immediate\"}}",
+        "payloadType": "json",
+        "x": 144,
+        "y": 586,
+        "wires": [
+            [
+                "5c8b79bc10876794"
+            ]
+        ]
+    },
+    {
+        "id": "b437ec37099156e0",
+        "type": "inject",
+        "z": "17b017b2265d4eef",
+        "name": "Bad command",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"msgType\":2,\"command\":\"BootyNotification\",\"cbId\":\"CS1\",\"data\":{\"vendorId\":\"asdfjasds\"}}",
+        "payloadType": "json",
+        "x": 154,
+        "y": 706,
+        "wires": [
+            [
+                "5c8b79bc10876794"
+            ]
+        ]
+    },
+    {
+        "id": "ba74563c2aa174df",
+        "type": "inject",
+        "z": "17b017b2265d4eef",
+        "name": "missing command",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"msgType\":2,\"cbId\":\"CS1\",\"data\":{\"vendorId\":\"asdfjasds\"}}",
+        "payloadType": "json",
+        "x": 170,
+        "y": 740,
+        "wires": [
+            [
+                "5c8b79bc10876794"
+            ]
+        ]
+    },
+    {
+        "id": "3653f7a08aa0f7a0",
+        "type": "catch",
+        "z": "17b017b2265d4eef",
+        "g": "68d0dd2e92d12502",
+        "name": "",
+        "scope": [
+            "c5598359111c37d4",
+            "05b878b39837563c"
+        ],
+        "uncaught": false,
+        "x": 190,
+        "y": 300,
+        "wires": [
+            [
+                "ee7a50be4c51fb53"
+            ]
+        ]
+    },
+    {
+        "id": "ee7a50be4c51fb53",
+        "type": "debug",
+        "z": "17b017b2265d4eef",
+        "g": "68d0dd2e92d12502",
+        "name": "Catch CS1 CS2",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 350,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "662126d0cbccde87",
+        "type": "inject",
+        "z": "17b017b2265d4eef",
+        "name": "Reset CS2",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"msgType\":2,\"command\":\"Reset\",\"cbId\":\"CS2\",\"data\":{\"type\":\"Immediate\"}}",
+        "payloadType": "json",
+        "x": 144,
+        "y": 626,
+        "wires": [
+            [
+                "5c8b79bc10876794"
+            ]
+        ]
+    },
+    {
+        "id": "407a940bfe55760e",
+        "type": "inject",
+        "z": "17b017b2265d4eef",
+        "name": "Reset XXX",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"msgType\":2,\"command\":\"Reset\",\"cbId\":\"xxx\",\"data\":{\"type\":\"Immediate\"}}",
+        "payloadType": "json",
+        "x": 144,
+        "y": 666,
+        "wires": [
+            [
+                "5c8b79bc10876794"
+            ]
+        ]
+    },
+    {
+        "id": "f8849c94f5ddf815",
+        "type": "inject",
+        "z": "17b017b2265d4eef",
+        "name": "Get commands",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"msgType\":99,\"command\":\"cmds\"}",
+        "payloadType": "json",
+        "x": 160,
+        "y": 440,
+        "wires": [
+            [
+                "5c8b79bc10876794"
+            ]
+        ]
+    },
+    {
+        "id": "18429e1166d1aa9a",
+        "type": "link out",
+        "z": "17b017b2265d4eef",
+        "name": "link out 2",
+        "mode": "link",
+        "links": [
+            "55352d0af3a31955"
+        ],
+        "x": 345,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "55352d0af3a31955",
+        "type": "link in",
+        "z": "17b017b2265d4eef",
+        "g": "68d0dd2e92d12502",
+        "name": "CSMS In",
+        "links": [
+            "18429e1166d1aa9a",
+            "88543a402ff29b7c",
+            "684a66982a04239b"
+        ],
+        "x": 105,
+        "y": 240,
+        "wires": [
+            [
+                "e29e5f8c9f2b32c9"
+            ]
+        ]
+    },
+    {
+        "id": "29a9c17758138182",
+        "type": "link out",
+        "z": "17b017b2265d4eef",
+        "g": "68d0dd2e92d12502",
+        "name": "link out 6",
+        "mode": "link",
+        "links": [
+            "43b78954f6eea2ad"
+        ],
+        "x": 355,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "43b78954f6eea2ad",
+        "type": "link in",
+        "z": "17b017b2265d4eef",
+        "name": "link in 3",
+        "links": [
+            "29a9c17758138182"
+        ],
+        "x": 525,
+        "y": 240,
+        "wires": [
+            [
+                "0d523bf31aa89775"
+            ]
+        ]
+    },
+    {
+        "id": "0d523bf31aa89775",
+        "type": "switch",
+        "z": "17b017b2265d4eef",
+        "name": "Req/Res/Error",
+        "property": "$split(msg.topic, '/')[-1] \t",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "Request",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "Response",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "Error",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 4,
+        "x": 640,
+        "y": 240,
+        "wires": [
+            [
+                "7286d03240f22bf9"
+            ],
+            [
+                "d80b3bfadecbfff2"
+            ],
+            [
+                "238015297f1b58b8"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "e6a0a8f971aa53d0",
+        "type": "link in",
+        "z": "17b017b2265d4eef",
+        "g": "f1c37ec2d8e7e211",
+        "name": "CSMS:REQ:BootNotification",
+        "links": [],
+        "x": 835,
+        "y": 420,
+        "wires": [
+            [
+                "4b54809f8a8114c4"
+            ]
+        ]
+    },
+    {
+        "id": "4b54809f8a8114c4",
+        "type": "function",
+        "z": "17b017b2265d4eef",
+        "g": "f1c37ec2d8e7e211",
+        "name": "BootNotification Response",
+        "func": "msg.payload.msgType = 3;\nmsg.payload.data = {\n    currentTime: new Date().toISOString(),\n    interval: 60,\n    status: \"Accepted\"\n}\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1000,
+        "y": 420,
+        "wires": [
+            [
+                "4a65d1dc02dff13c",
+                "36cae579348b6754"
+            ]
+        ]
+    },
+    {
+        "id": "36cae579348b6754",
+        "type": "link out",
+        "z": "17b017b2265d4eef",
+        "g": "f1c37ec2d8e7e211",
+        "name": "link out 7",
+        "mode": "return",
+        "links": [],
+        "x": 1175,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "4a65d1dc02dff13c",
+        "type": "debug",
+        "z": "17b017b2265d4eef",
+        "g": "f1c37ec2d8e7e211",
+        "name": "debug 6",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1220,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "d80b3bfadecbfff2",
+        "type": "change",
+        "z": "17b017b2265d4eef",
+        "name": "CSMS:Res",
+        "rules": [
+            {
+                "t": "set",
+                "p": "target",
+                "pt": "msg",
+                "to": "\"CSMS:RES:\" & msg.ocpp.command",
+                "tot": "jsonata"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 870,
+        "y": 260,
+        "wires": [
+            [
+                "b23e036a3c4955a1"
+            ]
+        ]
+    },
+    {
+        "id": "238015297f1b58b8",
+        "type": "change",
+        "z": "17b017b2265d4eef",
+        "name": "CSMS:Err",
+        "rules": [
+            {
+                "t": "set",
+                "p": "target",
+                "pt": "msg",
+                "to": "\"CSMS:ERR:\" & msg.ocpp.command",
+                "tot": "jsonata"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 860,
+        "y": 300,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "003ef71c4c684772",
+        "type": "link in",
+        "z": "17b017b2265d4eef",
+        "g": "f1c37ec2d8e7e211",
+        "name": "CSMS:REQ:Heartbeat",
+        "links": [],
+        "x": 845,
+        "y": 500,
+        "wires": [
+            [
+                "7a2b0858e4d23951"
+            ]
+        ]
+    },
+    {
+        "id": "7a2b0858e4d23951",
+        "type": "function",
+        "z": "17b017b2265d4eef",
+        "g": "f1c37ec2d8e7e211",
+        "name": "Heartbeat Response",
+        "func": "msg.payload.msgType = 3;\nmsg.payload.data = {\n    currentTime: new Date().toISOString(),\n}\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 990,
+        "y": 500,
+        "wires": [
+            [
+                "cf567346264cf095",
+                "52c0991b0c536188"
+            ]
+        ]
+    },
+    {
+        "id": "52c0991b0c536188",
+        "type": "link out",
+        "z": "17b017b2265d4eef",
+        "name": "link out 14",
+        "mode": "return",
+        "links": [],
+        "x": 1185,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "cf567346264cf095",
+        "type": "debug",
+        "z": "17b017b2265d4eef",
+        "name": "debug 16",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1230,
+        "y": 540,
+        "wires": []
+    },
+    {
+        "id": "4f4e786fc5770884",
+        "type": "inject",
+        "z": "17b017b2265d4eef",
+        "name": "Get Heartbeat Int",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"command\":\"GetVariables\",\"cbId\":\"CS1\",\"data\":{\"getVariableData\":[{\"attributeType\":\"Actual\",\"component\":{\"name\":\"OCPPCommCtrlr\"},\"variable\":{\"name\":\"HeartbeatInterval\"}}]}}",
+        "payloadType": "json",
+        "x": 160,
+        "y": 820,
+        "wires": [
+            [
+                "88543a402ff29b7c"
+            ]
+        ]
+    },
+    {
+        "id": "88543a402ff29b7c",
+        "type": "link out",
+        "z": "17b017b2265d4eef",
+        "name": "link out 18",
+        "mode": "link",
+        "links": [
+            "55352d0af3a31955"
+        ],
+        "x": 285,
+        "y": 820,
+        "wires": []
+    },
+    {
+        "id": "508b6c15ae780a56",
+        "type": "link in",
+        "z": "17b017b2265d4eef",
+        "g": "bb56e440777eaa4b",
+        "name": "CSMS:RES:GetVariables",
+        "links": [],
+        "x": 845,
+        "y": 640,
+        "wires": [
+            [
+                "aaf68899c06156de",
+                "bb07af139633f86e"
+            ]
+        ]
+    },
+    {
+        "id": "aaf68899c06156de",
+        "type": "debug",
+        "z": "17b017b2265d4eef",
+        "g": "bb56e440777eaa4b",
+        "name": "debug 20",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 990,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "4198e27f8248cadb",
+        "type": "link out",
+        "z": "17b017b2265d4eef",
+        "g": "68d0dd2e92d12502",
+        "name": "link out 19",
+        "mode": "return",
+        "links": [],
+        "x": 295,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "b23e036a3c4955a1",
+        "type": "link call",
+        "z": "17b017b2265d4eef",
+        "name": "Call func in B",
+        "links": [],
+        "linkType": "dynamic",
+        "timeout": "30",
+        "x": 1050,
+        "y": 260,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "bb07af139633f86e",
+        "type": "link out",
+        "z": "17b017b2265d4eef",
+        "g": "bb56e440777eaa4b",
+        "name": "link out 23",
+        "mode": "return",
+        "links": [],
+        "x": 885,
+        "y": 680,
+        "wires": []
+    },
+    {
+        "id": "b536790a0358cdd9",
+        "type": "comment",
+        "z": "17b017b2265d4eef",
+        "name": "Send Reqests/CALLs to CS",
+        "info": "",
+        "x": 180,
+        "y": 540,
+        "wires": []
+    },
+    {
+        "id": "0cab2ef927dba560",
+        "type": "link in",
+        "z": "17b017b2265d4eef",
+        "g": "bb56e440777eaa4b",
+        "name": "CSMS:RES:Reset",
+        "links": [],
+        "x": 835,
+        "y": 760,
+        "wires": [
+            [
+                "a4f37bcfafb7281d",
+                "c0724317d71d4d11"
+            ]
+        ]
+    },
+    {
+        "id": "a4f37bcfafb7281d",
+        "type": "debug",
+        "z": "17b017b2265d4eef",
+        "g": "bb56e440777eaa4b",
+        "name": "debug 22",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 980,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "c0724317d71d4d11",
+        "type": "link out",
+        "z": "17b017b2265d4eef",
+        "g": "bb56e440777eaa4b",
+        "name": "link out 24",
+        "mode": "return",
+        "links": [],
+        "x": 875,
+        "y": 800,
+        "wires": []
+    },
+    {
+        "id": "4114685861aedfd4",
+        "type": "comment",
+        "z": "17b017b2265d4eef",
+        "g": "bb56e440777eaa4b",
+        "name": "GetVariables RES",
+        "info": "",
+        "x": 920,
+        "y": 600,
+        "wires": []
+    },
+    {
+        "id": "8dbe7a5d9737b255",
+        "type": "comment",
+        "z": "17b017b2265d4eef",
+        "g": "bb56e440777eaa4b",
+        "name": "Reset RES",
+        "info": "",
+        "x": 880,
+        "y": 720,
+        "wires": []
+    },
+    {
+        "id": "7286d03240f22bf9",
+        "type": "change",
+        "z": "17b017b2265d4eef",
+        "name": "CSMS:Req",
+        "rules": [
+            {
+                "t": "set",
+                "p": "target",
+                "pt": "msg",
+                "to": "\"CSMS:REQ:\" & msg.ocpp.command",
+                "tot": "jsonata"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 870,
+        "y": 220,
+        "wires": [
+            [
+                "a6460c544525e59b"
+            ]
+        ]
+    },
+    {
+        "id": "a6460c544525e59b",
+        "type": "link call",
+        "z": "17b017b2265d4eef",
+        "name": "Call func in \"A\" ",
+        "links": [],
+        "linkType": "dynamic",
+        "timeout": "30",
+        "x": 1060,
+        "y": 220,
+        "wires": [
+            [
+                "684a66982a04239b"
+            ]
+        ]
+    },
+    {
+        "id": "684a66982a04239b",
+        "type": "link out",
+        "z": "17b017b2265d4eef",
+        "name": "link out 22",
+        "mode": "link",
+        "links": [
+            "55352d0af3a31955"
+        ],
+        "x": 1185,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "a38c1a52a6e225da",
+        "type": "comment",
+        "z": "17b017b2265d4eef",
+        "name": "Local Commands",
+        "info": "",
+        "x": 160,
+        "y": 400,
+        "wires": []
+    }
+]

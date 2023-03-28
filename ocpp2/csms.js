@@ -158,7 +158,13 @@ module.exports = function(RED) {
               case RESPONSE:
                 msg.payload.data = ocpp2[msgResponsePayload] || {};
                 if (cmdIdMap.has(ocpp2[msgId])){
-                  msg.payload.command = cmdIdMap.get(ocpp2[msgId]).command;
+                  let c = cmdIdMap.get(ocpp2[msgId]);
+
+                  msg.payload.command = c.command;
+                  if (c.hasOwnProperty('_linkSource')){
+                    msg._linkSource = c._linkSource; 
+                  }
+                  cmdIdMap.delete(ocpp2[msgId]);
                 } else {
                   let errMsg = `Expired or invalid RESPONSE: ${ocpp2[msgId]}`;
                   debug(errMsg);
@@ -178,7 +184,7 @@ module.exports = function(RED) {
             //
             let schemaName = `${msg.payload.command}${msgTypeStr}.json`;
 
-            debug(`COMMAND SCHEMA: ${schemaName}`);
+            // debug(`COMMAND SCHEMA: ${schemaName}`);
 
             let schemaPath = path.join(__dirname, 'schemas', schemaName)
 
@@ -202,7 +208,7 @@ module.exports = function(RED) {
               return;
             }
 
-            node.send(msg);
+            msg.hasOwnProperty('_linkSource') ? node.send(null,msg) : node.send(msg,null);
           }
 
         });
@@ -219,7 +225,7 @@ module.exports = function(RED) {
     ////////////////////////////////////////////
 
     node.on('input', function(msg,send,done) {
-      debug(msg.payload);
+      //debug(msg.payload);
 
       let ocpp2 = [];
 
@@ -266,23 +272,23 @@ module.exports = function(RED) {
 
             msg.payload = { connections };
 
-            send(msg);
+            msg.hasOwnProperty('_linkSource') ? node.send(null,msg) : node.send(msg,null);
             done();
             break;
           case 'cmds':
             let commands = cmdIdMap;
             msg.payload = { commands };
-            send(msg);
+            msg.hasOwnProperty('_linkSource') ? node.send(null,msg) : node.send(msg,null);
             done();
             break;
           case 'ws_close':
             msg.payload = "Sorry, not implemented yet";
-            send(msg);
+            msg.hasOwnProperty('_linkSource') ? node.send(null,msg) : node.send(msg,null);
             done();
             break;
           case 'ws_open':
             msg.payload = "Sorry, not implemented yet";
-            send(msg);
+            msg.hasOwnProperty('_linkSource') ? node.send(null,msg) : node.send(msg,null);
             done();
             break;
           default:
@@ -362,7 +368,22 @@ module.exports = function(RED) {
           }
 
           let id = ocpp2[msgId];
-          cmdIdMap.set(id, { cbId: msg.payload.cbId, command: ocpp2[msgAction], time: new Date() });
+
+          let cmdInfo = {
+            cbId: msg.payload.cbId, 
+            command: ocpp2[msgAction], 
+            time: new Date()
+          };
+
+        // Save the return link node path if it exists
+          if (msg.hasOwnProperty('_linkSource')){
+            cmdInfo._linkSource = JSON.parse(JSON.stringify(msg._linkSource));
+          }
+
+          cmdIdMap.set(id, cmdInfo);
+
+
+
           setTimeout( function(){
             if (cmdIdMap.has(id)){
               let expCmd = cmdIdMap.get(id);
@@ -393,6 +414,8 @@ module.exports = function(RED) {
 
             let schemaPath = path.join(__dirname, 'schemas', schemaName)
 
+            cmdIdMap.delete(ocpp2[msgId]);
+
             // By first checking if the file exists, we check that the command is an
             // acutal ocpp2.0.1 command
             if (fs.existsSync(schemaPath)){
@@ -408,7 +431,6 @@ module.exports = function(RED) {
                 //done(`OCPP Validation Errors: ${val.errors}`);
                 return;
               }
-              debug('SHOULD NOT REACH HERE');
 
             } else {
               let errMsg = `Invalid OCPP2.0.1 command: ${msgAction}`;

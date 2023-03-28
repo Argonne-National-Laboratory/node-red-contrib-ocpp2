@@ -93,7 +93,7 @@ module.exports = function(RED) {
       node.wsconnected = true;
       msg.ocpp.websocket = 'ONLINE';
       if (NetStatus != msg.ocpp.websocket) {
-        node.send(msg,msg);//send update
+        // node.send(msg);//send update
         NetStatus = msg.ocpp.websocket;
       }
 
@@ -114,7 +114,7 @@ module.exports = function(RED) {
       node.wsconnected = false;
       msg.ocpp.websocket = 'OFFLINE';
       if (NetStatus != msg.ocpp.websocket) {
-        node.send(msg,msg);//send update
+        // node.send(msg);//send update
         NetStatus = msg.ocpp.websocket;
       }
       // Stop the ping timer
@@ -133,7 +133,7 @@ module.exports = function(RED) {
     ws.addEventListener('message', function(event) {
       let msgIn = event.data;
       let cbId = node.cbId;
-      debug(`Get a message from CSMS: ${msgIn}`);
+      debug(`Got a message from CSMS: ${msgIn}`);
       // let ocpp2 = JSON.parse(msgIn);
       //
       let ocpp2;
@@ -179,7 +179,13 @@ module.exports = function(RED) {
           case RESPONSE:
             msg.payload.data = ocpp2[msgResponsePayload] || {};
             if (cmdIdMap.has(ocpp2[msgId])){
-              msg.payload.command = cmdIdMap.get(ocpp2[msgId]).command;
+              let c = cmdIdMap.get(ocpp2[msgId]);
+
+              msg.payload.command = c.command;
+              if (c.hasOwnProperty('_linkSource')){
+                msg._linkSource = c._linkSource; 
+              }
+              cmdIdMap.delete(ocpp2[msgId]);
             } else {
               let errMsg = `Expired or invalid RESPONSE: ${ocpp2[msgId]}`;
               debug(errMsg);
@@ -190,7 +196,7 @@ module.exports = function(RED) {
         }
 
         msg.topic = `${cbId}/${msgTypeStr}`;
-        debug(msg.topic);
+        //debug(msg.topic);
 
         msg.ocpp.command = msg.payload.command;
         msg.ocpp.cbId = cbId;
@@ -199,7 +205,7 @@ module.exports = function(RED) {
         //
         let schemaName = `${msg.payload.command}${msgTypeStr}.json`;
 
-        debug(`COMMAND SCHEMA: ${schemaName}`);
+        //debug(`COMMAND SCHEMA: ${schemaName}`);
 
         let schemaPath = path.join(__dirname, 'schemas', schemaName)
 
@@ -223,7 +229,7 @@ module.exports = function(RED) {
           return;
         }
 
-        node.send(msg);
+        msg.hasOwnProperty('_linkSource') ? node.send(null,msg) : node.send(msg,null);
       }
 
     });
@@ -323,7 +329,18 @@ module.exports = function(RED) {
           }
 
           let id = ocpp2[msgId];
-          cmdIdMap.set(id, { cbId: msg.payload.cbId, command: ocpp2[msgAction], time: new Date(), target: msg.target || '' });
+          let c = {
+            cbId: msg.payload.cbId, 
+            command: ocpp2[msgAction], 
+            time: new Date()
+          };
+
+          // Save the return link node path if it exists
+          if (msg.hasOwnProperty('_linkSource')){
+            c._linkSource = JSON.parse(JSON.stringify(msg._linkSource));
+          }
+
+          cmdIdMap.set(id, c);
           setTimeout( function(){
             if (cmdIdMap.has(id)){
               let expCmd = cmdIdMap.get(id);
