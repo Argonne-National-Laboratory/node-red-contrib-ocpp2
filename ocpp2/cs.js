@@ -1,5 +1,13 @@
-// CS: Charging Station
-// 
+/* CS: Charging Station
+
+  Title: Node-Red-Contrib-OCPP2
+  Author: Bryan Nystrom
+  Company: Argonne National Laborator
+
+  File: cs.js
+  Description: CS (Charge Station) node.
+
+*/ 
 
 'use strict';
 
@@ -16,7 +24,6 @@ let ReconnectingWebSocket = require('reconnecting-websocket');
 const url = require('node:url');
 const path = require('node:path');
 
-const events = require('events');
 
 //Use nodejs built-in crypto for uuid
 const crypto = require('crypto');
@@ -24,7 +31,6 @@ const crypto = require('crypto');
 //const Logger = require('./utils/logdata');
 const debug = require('debug')('anl:ocpp2:cs');
 
-const EventEmitter = events.EventEmitter;
 const REQEVTPOSTFIX = '::REQUEST';
 const CBIDCONPOSTFIX = '::CONNECTED';
 
@@ -60,12 +66,14 @@ module.exports = function(RED) {
     // Copy in the config values
     // 
     this.cbId = config.cbId;
-    this.csms_url = config.csms_url;
+    this.csms = RED.nodes.getNode(config.csms);
+    this.csms_url = this.csms.url;
     // TODO: csms users is required to be same as cbId
     // TODO: cmsm_pw should be CS specific
     // TODO: need to support updating pw from input
-    this.csms_user = config.csms_user;
-    this.csms_pw = config.csms_pw;
+    // this.csms_user = config.csms_user;
+    this.csms_user = this.cbId;
+    this.csms_pw = this.credentials.csms_pw;
     this.messageTimeout = config.messageTimeout || 10000;
     this.auto_connect = config.auto_connect;
 
@@ -99,21 +107,11 @@ module.exports = function(RED) {
     csmsURL.pathname = path.join(csmsURL.pathname,node.cbId);
     debug(csmsURL.href);
     
-    // const options = {
-    //   WebSocket: Websocket, // custom WebSocket constructor
-    //   connectionTimeout: 1000,
-    //   handshaketimeout: 5000,
-    //   startClosed: (node.auto_connect == false),
-    //   //maxRetries: 10,  //default to infinite retries
-    // };
 
     const ws_options = {
       handshaketimeout: 5000,
       connectTimeout: 5000
     };
-
-    // let ws = new ReconnectingWebSocket(() => csmsURL.href, ['ocpp2.0.1'], options);
-    // ws_connect();
 
     function reconn_debug() {
       debug(`wstomin: ${node.wstomin}`);
@@ -365,9 +363,6 @@ module.exports = function(RED) {
             if (msg.payload.data && msg.payload.data.hasOwnProperty('cbId')){
               this.cbId = msg.payload.data.cbId;
             }
-            if (msg.payload.data && msg.payload.data.hasOwnProperty('user')){
-              this.csms_user = msg.payload.data.user;
-            }
             if (msg.payload.data && msg.payload.data.hasOwnProperty('password')){
               this.csms_pw = msg.payload.data.password;
             }
@@ -377,7 +372,8 @@ module.exports = function(RED) {
             try {
               csmsURL.href = node.csms_url;
               csmsURL.protocol = 'ws';
-              csmsURL.username = node.csms_user;
+              // csmsURL.username = node.csms_user;
+              csmsURL.username = node.cbId;
               csmsURL.password = node.csms_pw;
               csmsURL.pathname = path.join(csmsURL.pathname,node.cbId);
               debug(csmsURL.href);
@@ -535,5 +531,23 @@ module.exports = function(RED) {
     });
   }
 
-  RED.nodes.registerType('CS', OcppChargeStationNode);
+  RED.nodes.registerType('CS', OcppChargeStationNode, {
+    credentials: {
+      csms_pw: {type: 'password'}
+    }
+  });
+  
+/***********************************************************************
+  * THis sets up the configuration node for target CSMSs
+  *
+***********************************************************************/
+
+  function CSMSConfigNode(n) {
+    RED.nodes.createNode(this, n);
+    this.url = n.url;
+    this.name = n.name || n.url;
+    }
+
+    RED.nodes.registerType('target-csms', CSMSConfigNode);
 }
+    

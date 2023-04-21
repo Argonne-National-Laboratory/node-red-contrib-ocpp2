@@ -25,11 +25,21 @@
             log: { value: false, required: true },
             logpath: {value: "", required: false}
         },
+        credentials: {
+            basic_auths: {type: 'text', required: true},
+        },
         inputs: 1,
         outputs: 2,
         icon: "csms.svg",
         label: function() {
             return this.name||"CSMS";
+        },
+        oneditprepare: function() {
+          $("#node-input-basic_auths").typedInput(
+          {
+            type: "json",
+            types: ["json"]
+          });
         }
 
     });
@@ -60,6 +70,12 @@
       <label for="node-input-ws_pw" ><i class="icon-globe"></i> Password</label>
       <input type="password" id="node-input-ws_pw" placeholder="password">
     </div>
+
+<div id="container16j" class="form-row">
+  <label for="node-input-basic_auths"><i class="icon-key"></i> CS Auth</label>
+  <input type="text" id="node-input-basic_auths" name="node-input-basic_auths">
+</div>
+
     <div class="header">Logging</div>
     <div class="bordered">
         <div class="checkbox">
