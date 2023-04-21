@@ -41,6 +41,12 @@ const RESPONSE = 3;
 const CALLERROR = 4;
 const CONTROL = 99;
 
+const WSTOMIN_DEF = 5;
+const WSTOMAX_DEF = 360;
+const WSTOINC_DEF = 5;
+
+const OCPPPROTOCOL = ['ocpp2.0.1'];
+
 let NetStatus = 'OFFLINE';
 
 const cmdIdMap = new Map();
@@ -63,11 +69,29 @@ module.exports = function(RED) {
     this.messageTimeout = config.messageTimeout || 10000;
     this.auto_connect = config.auto_connect;
 
+    this.wstomin = (isNaN(Number.parseInt(config.wstomin))) ? WSTOMIN_DEF : Number.parseInt(config.wstomin);
+    let _wstomax = (isNaN(Number.parseInt(config.wstomax))) ? WSTOMAX_DEF : Number.parseInt(config.wstomax);
+    this.wstomax = parseInt((_wstomax >= this.wstomin)? _wstomax : this.wstomin);
+    this.wstoinc = (isNaN(Number.parseInt(config.wstoinc))) ? WSTOINC_DEF : Number.parseInt(config.wstoinc);
+
     const node = this;
 
     node.status({ fill: 'blue', shape: 'ring', text: 'OCPP CS 2.0.1' });
 
-    const csmsURL = new URL(node.csms_url);
+    let csmsURL;
+    let ws;
+    let wsreconncnt = 0;
+    let wstocur = parseInt(node.wstomin);
+    let conto;
+    let wsnoreconn = false;
+
+    try {
+      csmsURL = new URL(node.csms_url);
+    }catch(error){
+      node.status({ fill: 'red', shape: 'ring', text: error });
+      debug(`URL error: ${error}`);
+      return;
+    }
 
     csmsURL.protocol = 'ws';
     csmsURL.username = node.csms_user;
@@ -75,46 +99,61 @@ module.exports = function(RED) {
     csmsURL.pathname = path.join(csmsURL.pathname,node.cbId);
     debug(csmsURL.href);
     
-    const options = {
-      WebSocket: Websocket, // custom WebSocket constructor
-      connectionTimeout: 1000,
+    // const options = {
+    //   WebSocket: Websocket, // custom WebSocket constructor
+    //   connectionTimeout: 1000,
+    //   handshaketimeout: 5000,
+    //   startClosed: (node.auto_connect == false),
+    //   //maxRetries: 10,  //default to infinite retries
+    // };
+
+    const ws_options = {
       handshaketimeout: 5000,
-      startClosed: (node.auto_connect == false),
-      //maxRetries: 10,  //default to infinite retries
+      connectTimeout: 5000
     };
 
-    let ws = new ReconnectingWebSocket(() => csmsURL.href, ['ocpp2.0.1'], options);
+    // let ws = new ReconnectingWebSocket(() => csmsURL.href, ['ocpp2.0.1'], options);
+    // ws_connect();
 
-    ws.addEventListener('open', function(){
+    function reconn_debug() {
+      debug(`wstomin: ${node.wstomin}`);
+      debug(`wstomax: ${node.wstomax}`);
+      debug(`wstoinc: ${node.wstoinc}`);
+      debug(`wstocur: ${wstocur}`);
+      debug(`wsreconncnt: ${wsreconncnt}`);
+    }; 
+
+
+    let ws_open = function(){
       let msg = {};
       msg.ocpp = {};
-      msg.payload = {};
+      wsreconncnt = 0;
+      wstocur = parseInt(node.wstomin);
       node.status({fill: 'green', shape: 'dot', text: 'Connected...'});
       node.wsconnected = true;
+      wsreconncnt = 0;
+      wstocur = node.wstomin;
       msg.ocpp.websocket = 'ONLINE';
       if (NetStatus != msg.ocpp.websocket) {
-        // node.send(msg);//send update
+        node.send(msg);//send update
         NetStatus = msg.ocpp.websocket;
       }
 
       // Add a ping intervale timer
-      // Need to call websocket property of websockets-reconnect ( stored as _ws )
-      hPingTimer = setInterval(() => { ws._ws.ping(); }, 30000);
-    });
+      hPingTimer = setInterval(() => { ws.ping(); }, 30000);
+    };
 
 
-    ws.addEventListener('close', function(code, reason){
+    let ws_close = function(code, reason){
       let msg = {};
       msg.ocpp = {};
-      msg.payload = {};
-      //logger.log('info', `Closing websocket connection to ${csms_url}`);
-      debug('Websocket closed: code ', {code});
-      debug('Websocket closed: reason ', {reason});
-      node.status({fill: 'red', shape: 'dot', text: 'Closed...'});
+      debug(`Websocket closed code: ${code.code}`);
+      // debug(`Websocket closed reason: ${reason}`);
+      node.status({fill: 'red', shape: 'dot', text: 'Closed'});
       node.wsconnected = false;
       msg.ocpp.websocket = 'OFFLINE';
       if (NetStatus != msg.ocpp.websocket) {
-        // node.send(msg);//send update
+        node.send(msg);//send update
         NetStatus = msg.ocpp.websocket;
       }
       // Stop the ping timer
@@ -123,14 +162,33 @@ module.exports = function(RED) {
         hPingTimer = null;
       }
 
-    });
+      // remove all the events from the ws object
+      ws.removeEventListener('open',ws_open);
+      ws.removeEventListener('close',ws_close);
+      ws.removeEventListener('error',ws_error);
+      ws.removeEventListener('message',ws_message);
+      
+      if (!wsnoreconn){
+        // Inc the reconnection try count
+        wsreconncnt += 1;
+        node.status({fill: 'red', shape: 'dot', text: `(${wsreconncnt}) Reconnecting `});
+        conto = setTimeout( () => ws_connect(), wstocur * 1000);
+        debug(`ws reconnect timeout: ${wstocur}`);
+        // adjust the timeout value for the next round
+        wstocur += +node.wstoinc;
+        wstocur = (wstocur >= node.wstomax) ? node.wstomax : wstocur; 
+      } else {
+        node.status({fill: 'red', shape: 'dot', text: `Closed`});
+      };
+      
+    };
 
-    ws.addEventListener('error', function(err){
+    let ws_error = function(err){
       node.log('Websocket error:', {err});
-      debug('Websocket error:', {err});
-    });
+      // debug('Websocket error:', {err});
+    };
 
-    ws.addEventListener('message', function(event) {
+    let ws_message = function(event) {
       let msgIn = event.data;
       let cbId = node.cbId;
       debug(`Got a message from CSMS: ${msgIn}`);
@@ -232,7 +290,49 @@ module.exports = function(RED) {
         msg.hasOwnProperty('_linkSource') ? node.send(null,msg) : node.send(msg,null);
       }
 
-    });
+    };
+    
+    function ws_connect(){
+      reconn_debug();
+      try {
+        ws = new Websocket(csmsURL.href, OCPPPROTOCOL, ws_options);
+        ws.timeout = 5000;
+        debug(`${node.cbId} ws_connect()`);
+        ws.addEventListener('open',ws_open);
+        ws.addEventListener('close',ws_close);
+        ws.addEventListener('error',ws_error);
+        ws.addEventListener('message',ws_message);
+      }catch(error){
+        debug(`Websocket Error: ${error}`);
+        return;
+      }
+    };
+
+    function ws_reconnect(){
+      debug('Clearing Timeout');
+      clearTimeout(conto);
+      try {
+        if (ws){
+          ws.removeEventListener('open',ws_open);
+          ws.removeEventListener('close',ws_close);
+          ws.removeEventListener('error',ws_error);
+          ws.removeEventListener('message',ws_message);
+          ws.close();
+        }
+        clearTimeout(conto);
+        ws_connect();
+      }catch(error){
+        debug(`Websocket Error: ${error}`);
+        return;
+      }
+    };
+
+    // Only do this if auto-connect is enabled
+    // 
+    if (node.auto_connect && csmsURL){
+      node.status({fill: 'blue', shape: 'dot', text: `Connecting...`});
+      ws_connect();
+    }
 
     ////////////////////////////////////////////
     // This section is for input from a the   //
@@ -261,16 +361,41 @@ module.exports = function(RED) {
 
         switch (ocpp2[msgAction].toLowerCase()){
           case 'connect':
+            clearTimeout(conto);
             if (msg.payload.data && msg.payload.data.hasOwnProperty('cbId')){
               this.cbId = msg.payload.data.cbId;
+            }
+            if (msg.payload.data && msg.payload.data.hasOwnProperty('user')){
+              this.csms_user = msg.payload.data.user;
+            }
+            if (msg.payload.data && msg.payload.data.hasOwnProperty('password')){
+              this.csms_pw = msg.payload.data.password;
             }
             if (msg.payload.data && msg.payload.data.hasOwnProperty('csmsUrl')){
               this.csms_url = msg.payload.data.csmsUrl.endsWith('/') ? msg.payload.data.csmsUrl.slice(0, -1) : msg.payload.data.csmsUrl;
             }
-            ws.reconnect();
+            try {
+              csmsURL.href = node.csms_url;
+              csmsURL.protocol = 'ws';
+              csmsURL.username = node.csms_user;
+              csmsURL.password = node.csms_pw;
+              csmsURL.pathname = path.join(csmsURL.pathname,node.cbId);
+              debug(csmsURL.href);
+            }catch(error){
+              node.status({ fill: 'red', shape: 'ring', text: error });
+              debug(`URL error: ${error}`);
+              return;
+            }
+            wsnoreconn = false;
+            ws_reconnect();
             break;
           case 'close':
-            ws.close();
+            wsnoreconn = true;
+            if(ws){
+              clearTimeout(conto);
+              ws.close();
+              node.status({fill: 'red', shape: 'dot', text: 'Closed'});
+            }
             break;
           default:
             break;

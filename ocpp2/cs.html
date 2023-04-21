@@ -21,6 +21,9 @@
             csms_pw: {value: "", required: false},
             cbId: {value: "", required: true},
             name: {value: ""},
+            wstomin: {value: 5, required: true}, 
+            wstomax: {value: 360, required: true},
+            wstoinc: {value: 5, required: true},
             auto_connect: {value: true}
         },
         inputs: 1,
@@ -62,6 +65,19 @@
     <div class="form-row">
         <label for="node-input-auto_connect"><i class="icon-tag"></i> Auto Connect</label>
         <input type="checkbox" id="node-input-auto_connect" >
+    </div>
+    <div class="header">Reconnect Rate</div>
+    <div class="form-row">
+        <label for="node-input-wstomin"><i class="icon-timer"></i> Min (sec)</label>
+        <input type="number" id="node-input-wstomin" min="0">
+    </div>
+    <div class="form-row">
+        <label for="node-input-wstomax"><i class="icon-timer"></i> Max (sec)</label>
+        <input type="number" id="node-input-wstomax" min="0">
+    </div>
+    <div class="form-row">
+        <label for="node-input-wstoinc"><i class="icon-timer"></i> Inc (sec)</label>
+        <input type="number" id="node-input-wstoinc" min="0">
     </div>
 </script>
 
