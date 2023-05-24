@@ -1,3 +1,14 @@
+<!---
+
+  Title: Node-Red-Contrib-OCPP2
+  Author: Bryan Nystrom
+  Company: Argonne National Laborator
+
+  File: cs.html
+  Description: Config file for CS (Charge Station) node.
+
+---!>
+
 <style>
     .header {
         text-decoration: underline;
@@ -16,12 +27,16 @@
         category: 'OCPP',
         color: '#16ccff',
         defaults: {
-            csms_url: {value: "", required: true},
-            csms_user: {value: "", required: false},
-            csms_pw: {value: "", required: false},
-            cbId: {value: "", required: true},
             name: {value: ""},
+            csms: {value: "", type: "target-csms", required: true},
+            cbId: {value: "", required: true},
+            wstomin: {value: 5, required: true}, 
+            wstomax: {value: 360, required: true},
+            wstoinc: {value: 5, required: true},
             auto_connect: {value: true}
+        },
+        credentials: {
+            csms_pw: {type: 'password', required: true},
         },
         inputs: 1,
         outputs: 2,
@@ -39,29 +54,39 @@
 
     <div class="form-row">
         <label for="node-input-name"><i class="icon-tag"></i> Name</label>
-        <input type="text" id="node-input-name" placeholder="Name (defaults to OCPP Server:<PORT>)" >
+        <input type="text" id="node-input-name" placeholder="Name (defaults to cbId)" >
     </div>
     
     <div class="form-row">
         <label for="node-input-cbId"><i class="icon-tag"></i> cbId</label>
         <input type="text" id="node-input-cbId" placeholder="CS Charge Box Id" >
     </div>
-    <div class="header">CSMS</div>
+    <div class="header">Target CSMS</div>
     <div class="form-row">
-        <label for="node-input-csms_url"><i class="icon-tag"></i> Url</label>
-        <input type="text" id="node-input-csms_url" placeholder="CSMS url (no trailing slash)" >
-    </div>
-    <div class="form-row">
-        <label for="node-input-csms_user"><i class="icon-tag"></i> Login</label>
-        <input type="text" id="node-input-csms_user" placeholder="username" >
-    </div>
-    <div class="form-row">
-        <label for="node-input-csms_pw"><i class="icon-tag"></i> Password</label>
-        <input type="password" id="node-input-csms_pw" placeholder="password" >
+        <label for="node-input-csms"><i class="icon-tag"></i> Url</label>
+        <input type="text" id="node-input-csms" placeholder="Target CSMS" >
     </div>
     <div class="form-row">
         <label for="node-input-auto_connect"><i class="icon-tag"></i> Auto Connect</label>
         <input type="checkbox" id="node-input-auto_connect" >
+    </div>
+    <div class="header">Basic Auth</div>
+    <div class="form-row">
+        <label for="node-input-csms_pw"><i class="icon-tag"></i> Password</label>
+        <input type="password" id="node-input-csms_pw" placeholder="password" >
+    </div>
+    <div class="header">Reconnect Rate</div>
+    <div class="form-row">
+        <label for="node-input-wstomin"><i class="icon-timer"></i> Min (sec)</label>
+        <input type="number" id="node-input-wstomin" min="0">
+    </div>
+    <div class="form-row">
+        <label for="node-input-wstomax"><i class="icon-timer"></i> Max (sec)</label>
+        <input type="number" id="node-input-wstomax" min="0">
+    </div>
+    <div class="form-row">
+        <label for="node-input-wstoinc"><i class="icon-timer"></i> Inc (sec)</label>
+        <input type="number" id="node-input-wstoinc" min="0">
     </div>
 </script>
 
@@ -70,3 +95,47 @@
 
 </script>
 
+<!--
+/***********************************************************************
+  * THis sets up the configuration node for target CSMSs
+  *
+***********************************************************************/
+-->
+
+<script type="text/javascript">
+  RED.nodes.registerType('target-csms', {
+    category: 'config',
+    defaults: {
+      name: {value: "", required: false},
+      url: { value: "", required: true}
+    },
+    label: function() {
+      return this.name || this.url || "CSMS";
+    }
+  });
+</script>
+
+<script type="text/x-red" data-template-name="target-csms">
+  <div class="from-row">
+    <label for="node-config-input-name"><i class="icon-bookmark"></i> Name</label>
+    <input type="text" id="node-config-input-name", placeholder="Name is CSMS"/>
+  </div>
+  <div class="from-row">
+    <label for="node-config-input-url"><i class="icon-globe"></i> Name</label>
+    <input type="text" id="node-config-input-url", placeholder="ws://localhost:1234/ocpp"/>
+  </div>
+</script>
+
+<script type="text/x-red" data-help-name="target-csms">
+
+  <p>Configures the taget CSMS</p>
+  <h3>Configuration Settings</h3>
+
+  <dl>
+    <dt>Name:</dt>
+    <dd>Give a unique name to help identify this target CSMS</dd>
+    <dt>URL</dt>
+    <dd>Give the target CSMS URL. Must start with 'ws://' or 'wss://'. Should include the port and route if applicable.<br>
+    <i>Example: ws://my_csms.com:8888/ocpp</i></dd>
+  </dl>
+</script>

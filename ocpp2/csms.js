@@ -15,9 +15,8 @@ const schema_val = new Validator();
 // we need fs for reading the validation schema and logging
 const fs = require('node:fs');
 const path = require('path');
-const events = require('events');
-//const { v4: uuidv4 } = require('uuid');
-//
+// const events = require('events');
+
 //Use nodejs built-in crypto for uuid
 const crypto = require('crypto');
 
@@ -26,10 +25,7 @@ const proc = require('node:process');
 
 //const Logger = require('./utils/logdata');
 const debug = require('debug')('anl:ocpp2:csms');
-const debug_csresponse = require('debug')('anl:ocpp2:cs:response');
-const debug_csrequest = require('debug')('anl:ocpp2:cs:request:json');
 
-const EventEmitter = events.EventEmitter;
 const REQEVTPOSTFIX = '::REQUEST';
 const CBIDCONPOSTFIX = '::CONNECTED';
 
@@ -59,6 +55,8 @@ module.exports = function(RED) {
     this.ws_pw = config.ws_pw;
     this.messageTimeout = config.messageTimeout || 10000;
 
+    this.basic_auths = this.credentials.basic_auths;
+
     const node = this;
 
     const wspath = `${node.path}/:cbId`;
@@ -70,10 +68,13 @@ module.exports = function(RED) {
     // TODO: Should support a p/w for each CS.
     // TODO: Option to use single p/w signon:
     //
-    var users = {};
-    users[node.ws_user] = node.ws_pw;
+    var users = JSON.parse(this.basic_auths);
+    
+    debug(`Basic Auth: ${users.BadTaco}`);
+    // users[node.ws_user] = node.ws_pw;
+
     expressServer.use( basicAuth({
-      users
+      users: users
     }));
 
     // This checks that the subprotocol header for websockets is set to 'ocpp2.0.1'
@@ -468,5 +469,7 @@ module.exports = function(RED) {
     });
   }
 
-  RED.nodes.registerType('CSMS', OcppCsmsNode);
+  RED.nodes.registerType('CSMS', OcppCsmsNode, { 
+    credentials: { basic_auths: { type: 'json' } }
+  });
 }
