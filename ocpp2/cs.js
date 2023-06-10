@@ -20,7 +20,6 @@ const schema_val = new Validator();
 // we need this for reading the validation schema
 const fs = require('fs');
 
-let ReconnectingWebSocket = require('reconnecting-websocket');
 const url = require('node:url');
 const path = require('node:path');
 
@@ -105,8 +104,6 @@ module.exports = function(RED) {
     csmsURL.username = node.csms_user;
     csmsURL.password = node.csms_pw;
     csmsURL.pathname = path.join(csmsURL.pathname,node.cbId);
-    debug(csmsURL.href);
-    
 
     const ws_options = {
       handshaketimeout: 5000,
@@ -221,6 +218,7 @@ module.exports = function(RED) {
             msg.payload.data = ocpp2[msgRequestPayload] || {}; 
             msg.payload.command = ocpp2[msgAction] || null; 
             msg.payload.MessageId = ocpp2[msgId];
+            msg.payload.cbId = cbId;
             msg.ocpp.MessageId = ocpp2[msgId];
             let id = ocpp2[msgId];
             cmdIdMap.set(id, { cbId: msg.payload.cbId, command: ocpp2[msgAction], time: new Date() });
@@ -291,7 +289,8 @@ module.exports = function(RED) {
     };
     
     function ws_connect(){
-      reconn_debug();
+      //
+      //reconn_debug();
       try {
         ws = new Websocket(csmsURL.href, OCPPPROTOCOL, ws_options);
         ws.timeout = 5000;
