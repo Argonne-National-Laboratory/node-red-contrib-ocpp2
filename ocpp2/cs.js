@@ -520,7 +520,7 @@ module.exports = function(RED) {
             return;
           }
 
-
+          cmdIdMap.delete(ocpp2[msgId]);
           let ocpp_msg = JSON.stringify(ocpp2);
           debug(`Sending message: ${ocpp_msg}`);
           ws.send(ocpp_msg,ocpp_msg);
