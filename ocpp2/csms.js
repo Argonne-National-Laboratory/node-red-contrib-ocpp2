@@ -5,9 +5,11 @@
 
 
 const express = require('express');
-const expressws = require('express-ws');
-const basicAuth = require('express-basic-auth');
-
+const ws = require('ws');
+//const expressws = require('express-ws');
+//const basicAuth = require('express-basic-auth');
+const auth = require('basic-auth');
+//const http = require('http');
 // This will validate incoming and outgoing ocpp2.0.1 messages
 // for proper format
 const Validator = require('jsonschema').Validator;
@@ -61,21 +63,52 @@ module.exports = function(RED) {
 
     const wspath = `${node.path}/:cbId`;
 
-    const expressServer = express();
+    const app = express();
+
 
     node.status({ fill: 'blue', shape: 'ring', text: 'CSMS 2.0.1' });
     debug('Starting OCPP2.0.1 CSMS');
+
     // TODO: Should support a p/w for each CS.
     // TODO: Option to use single p/w signon:
     //
-    var users = JSON.parse(this.basic_auths);
     
-    debug(`Basic Auth: ${users.BadTaco}`);
+    // debug(`Basic Auth: ${users}`);
     // users[node.ws_user] = node.ws_pw;
 
-    expressServer.use( basicAuth({
-      users: users
-    }));
+    function ocpp2Authenticate(req){
+      
+      const users = JSON.parse(node.basic_auths);
+      const user = auth(req);
+      const cbId = req.params.cbId || '';
+      debug(`Try to Auth: ${user.name}, ${user.pass}`);
+
+      if (user.name !== cbId || (!users.hasOwnProperty(user.name)) || (users[user.name] !== user.pass) ){
+        return false;
+      }
+      return true;
+      
+    }
+
+
+    // Basic authentication middleware
+//    const basicAuth = (req, res, next) => {
+//      const credentials = auth(req);
+//  
+//      debug('XXX I GOT CALLED XXX');
+//      if (!credentials || credentials.name !== 'username' || credentials.pass !== 'password') {
+//        res.statusCode = 401;
+//        res.setHeader('WWW-Authenticate', 'Basic realm="example"');
+//        res.end('Access denied');
+//      } else {
+//        next();
+//      }
+//    };
+
+//    app.use( basicAuth({
+//      users: users,
+//      authorizer: myAuthorizer
+//    }));
 
     // This checks that the subprotocol header for websockets is set to 'ocpp2.0.1'
     const wsOptions = {
@@ -86,137 +119,180 @@ module.exports = function(RED) {
       },
     };
 
-    const expressWs = expressws(expressServer, null, { wsOptions });
+    //const expressServer = http.createServer(wsOptions,app);
+    //const expressWs = expressws(app,expressServer);
+
+    //const expressWs = expressws(expressServer, null, { wsOptions });
     //const expressWs = expressws(expressServer);
 
+    const server = app.listen(node.port);
+    const wsServer = new ws.Server({ noServer: true });
+    
+    app.get( wspath, (req, res, next) => {
+      
+      debug('New connection to route');
+      debug(`Connection for ChargeBox ${req.params.cbId}`);
 
-    const server = expressServer.listen(node.port, function() {
-      expressServer.ws(wspath, function(ws, req, next) {
-        let cbId = req.params.cbId;
+      const creds = auth(req);
 
-        connMap.set(cbId, { since: new Date(), ws });
-        debug(`Message from ${cbId}`);
-        let cnt = connMap.size;
-        node.status({ fill: 'green', shape: 'ring', text: `(${cnt})` });
-
-        ws.on('open', function() {
-          debug(`Got an ws.open for ${cbId}`);
+      if (ocpp2Authenticate(req) == true){
+        
+        wsServer.handleUpgrade(req, req.socket, Buffer.alloc(0), (ws, req) => {
+          wsServer.emit('connection', ws, req);
         });
-        ws.on('close', function() {
-          debug(`Got an ws.close for ${cbId}`);
-          connMap.delete(cbId)
-          let cnt = connMap.size;
-          node.status({ fill: 'green', shape: 'ring', text: `(${cnt})` });
-        });
-        ws.on('error', function() {
-          debug(`Got an ws.error for ${cbId}`);
-        });
+      } else {
 
-        ws.on('message', function(msgIn){
-          debug(`Get a message from ${cbId}: ${msgIn}`);
-          // let ocpp2 = JSON.parse(msgIn);
-          //
-          let ocpp2;
+        res.statusCode = 401;
+        res.setHeader('WWW-Authenticate', 'Basic realm="OCPP2.x"')
+        res.end('Access denied')
+      }
 
-          //////////////////////////////
-          // This should never happen //
-          // ..but I've seen EVSEs    //
-          // do it..                  //
-          /////////////////////////////
-          if (msgIn[0] != '[') {
-            ocpp2 = JSON.parse('[' + msgIn + ']');
-          } else {
-            ocpp2 = JSON.parse(msgIn);
-          }
-          
-          const msgTypeStr = ['Request','Response','Error'][ocpp2[MSGTYPE]-2];
+    });
 
-          // REQUEST, RESPONSE, or ERROR?
-          //
-          if (ocpp2[MSGTYPE] == REQUEST || ocpp2[MSGTYPE] == RESPONSE){
-            let msg = {};
-            msg.ocpp = {};
-            msg.payload = {};
+    //const server = expressServer.listen(node.port, function() {
+      //expressServer.ws(wspath, function(ws, req, next) {
+      //expressWs.getWss().on('headers',(headers, req) => {
+      //  basicAuth(req,null, () => {});
+      //});
 
-            msg.ocpp.ocppVersion = '2.0.1';
-
-            switch (ocpp2[MSGTYPE]){
-              case REQUEST:
-                msg.payload.data = ocpp2[MSGREQUESTPAYLOAD] || {}; 
-                msg.payload.command = ocpp2[MSGACTION] || null; 
-                msg.payload.MessageId = ocpp2[MSGID];
-                msg.ocpp.MessageId = ocpp2[MSGID];
-                let id = ocpp2[MSGID];
-                cmdIdMap.set(id, { cbId: msg.payload.cbId, command: ocpp2[MSGACTION], time: new Date() });
-                setTimeout( function(){
-                  if (cmdIdMap.has(id)){
-                    let expCmd = cmdIdMap.get(id);
-                    debug(`Expired Req: id: ${id}, cbId: ${expCmd.cbId} cmd: ${expCmd.command}`);
-                    cmdIdMap.delete(id);
-                  }
-                }, node.messageTimeout,id);
-                break;
-              case RESPONSE:
-                msg.payload.data = ocpp2[MSGRESPONSEPAYLOAD] || {};
-                if (cmdIdMap.has(ocpp2[MSGID])){
-                  let c = cmdIdMap.get(ocpp2[MSGID]);
-
-                  msg.payload.command = c.command;
-                  if (c.hasOwnProperty('_linkSource')){
-                    msg._linkSource = c._linkSource; 
-                  }
-                  cmdIdMap.delete(ocpp2[MSGID]);
-                } else {
-                  let errMsg = `Expired or invalid RESPONSE: ${ocpp2[MSGID]}`;
-                  debug(errMsg);
-                  node.error(errMsg);
-                  return;
-                }
-                break;
-            }
-
-            msg.topic = `${cbId}/${msgTypeStr}`;
-            debug(msg.topic);
-
-            msg.ocpp.command = msg.payload.command;
-            msg.ocpp.cbId = cbId;
-
-            // Check valididty of the command schema
-            //
-            let schemaName = `${msg.payload.command}${msgTypeStr}.json`;
-
-            // debug(`COMMAND SCHEMA: ${schemaName}`);
-
-            let schemaPath = path.join(__dirname, 'schemas', schemaName)
-
-            // By first checking if the file exists, we check that the command is an
-            // acutal ocpp2.0.1 command
-            if (fs.existsSync(schemaPath)){
-              let schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
-
-              let val = schema_val.validate(ocpp2[MSGREQUESTPAYLOAD],schema);
-
-              if (val.errors.length > 0) {
-                let invalidOcpp2 = val.errors;
-                done(invalidOcpp2);
-                node.error({invalidOcpp2});
-                return;
-              }
-            } else {
-              let errMsg = `Invalid OCPP2.0.1 command: ${ocpp2[MSGACTION]}`;
-              node.error(errMsg);
-              done(errMsg);
-              return;
-            }
-
-            msg.hasOwnProperty('_linkSource') ? node.send(null,msg) : node.send(msg,null);
-          }
-
-        });
-
-        next();
+// Set up a headless websocket server that prints any
+// events that come in.
+    wsServer.on('connection', (ws, req) => {
+      
+      ws.on('headers', (headers, req) => {
+        let creds = auth(req);
+        console.log(`creds: ${creds.user} : ${creds.password}`);
       });
 
+      let cbId = req.params.cbId;
+
+      connMap.set(cbId, { since: new Date(), ws });
+      debug(`Message from ${cbId}`);
+      let cnt = connMap.size;
+      node.status({ fill: 'green', shape: 'ring', text: `(${cnt})` });
+
+      ws.on('open', function() {
+        debug(`Got an ws.open for ${cbId}`);
+      });
+      
+      ws.on('close', function() {
+        debug(`Got an ws.close for ${cbId}`);
+        connMap.delete(cbId)
+        let cnt = connMap.size;
+        node.status({ fill: 'green', shape: 'ring', text: `(${cnt})` });
+      });
+
+      ws.on('error', function() {
+        debug(`Got an ws.error for ${cbId}`);
+      });
+
+      ws.on('message', function(msgInBuff){
+
+        // Messages sent in are actually buffers (when not using express-ws), so we need to convert it to a string
+        const msgIn = msgInBuff.toString();
+        debug(`Get a message from ${cbId}: ${msgIn}`);
+        // let ocpp2 = JSON.parse(msgIn);
+        //
+        let ocpp2;
+
+        //////////////////////////////
+        // This should never happen //
+        // ..but I've seen EVSEs    //
+        // do it..                  //
+        /////////////////////////////
+        if (msgIn.charAt(0) === '[') {
+          debug('NOT Missing brackets');
+          ocpp2 = JSON.parse(msgIn.trim());
+        } else {
+          debug(`Missing brackets ${msgIn.charAt(0)}`);
+          ocpp2 = JSON.parse('[' + msgIn.trim() + ']');
+        }
+
+        const msgTypeStr = ['Request','Response','Error'][ocpp2[MSGTYPE]-2];
+
+        debug(`Made it here ${msgTypeStr}`);
+        // REQUEST, RESPONSE, or ERROR?
+        //
+        if (ocpp2[MSGTYPE] == REQUEST || ocpp2[MSGTYPE] == RESPONSE){
+          let msg = {};
+          msg.ocpp = {};
+          msg.payload = {};
+
+          msg.ocpp.ocppVersion = '2.0.1';
+
+          switch (ocpp2[MSGTYPE]){
+            case REQUEST:
+              msg.payload.data = ocpp2[MSGREQUESTPAYLOAD] || {}; 
+              msg.payload.command = ocpp2[MSGACTION] || null; 
+              msg.payload.MessageId = ocpp2[MSGID];
+              msg.ocpp.MessageId = ocpp2[MSGID];
+              let id = ocpp2[MSGID];
+              cmdIdMap.set(id, { cbId: msg.payload.cbId, command: ocpp2[MSGACTION], time: new Date() });
+              setTimeout( function(){
+                if (cmdIdMap.has(id)){
+                  let expCmd = cmdIdMap.get(id);
+                  debug(`Expired Req: id: ${id}, cbId: ${expCmd.cbId} cmd: ${expCmd.command}`);
+                  cmdIdMap.delete(id);
+                }
+              }, node.messageTimeout,id);
+              break;
+            case RESPONSE:
+              msg.payload.data = ocpp2[MSGRESPONSEPAYLOAD] || {};
+              if (cmdIdMap.has(ocpp2[MSGID])){
+                let c = cmdIdMap.get(ocpp2[MSGID]);
+
+                msg.payload.command = c.command;
+                if (c.hasOwnProperty('_linkSource')){
+                  msg._linkSource = c._linkSource; 
+                }
+                cmdIdMap.delete(ocpp2[MSGID]);
+              } else {
+                let errMsg = `Expired or invalid RESPONSE: ${ocpp2[MSGID]}`;
+                debug(errMsg);
+                node.error(errMsg);
+                return;
+              }
+              break;
+          }
+
+          msg.topic = `${cbId}/${msgTypeStr}`;
+          debug(msg.topic);
+
+          msg.ocpp.command = msg.payload.command;
+          msg.ocpp.cbId = cbId;
+
+          // Check valididty of the command schema
+          //
+          let schemaName = `${msg.payload.command}${msgTypeStr}.json`;
+
+          // debug(`COMMAND SCHEMA: ${schemaName}`);
+
+          let schemaPath = path.join(__dirname, 'schemas', schemaName)
+
+          // By first checking if the file exists, we check that the command is an
+          // acutal ocpp2.0.1 command
+          if (fs.existsSync(schemaPath)){
+            let schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
+
+            let val = schema_val.validate(ocpp2[MSGREQUESTPAYLOAD],schema);
+
+            if (val.errors.length > 0) {
+              let invalidOcpp2 = val.errors;
+              done(invalidOcpp2);
+              node.error({invalidOcpp2});
+              return;
+            }
+          } else {
+            let errMsg = `Invalid OCPP2.0.1 command: ${ocpp2[MSGACTION]}`;
+            node.error(errMsg);
+            done(errMsg);
+            return;
+          }
+
+          msg.hasOwnProperty('_linkSource') ? node.send(null,msg) : node.send(msg,null);
+        }
+
+      });
 
     });
 
@@ -280,6 +356,13 @@ module.exports = function(RED) {
             let commands = cmdIdMap;
             msg.payload = { commands };
             msg.hasOwnProperty('_linkSource') ? node.send(null,msg) : node.send(msg,null);
+            done();
+            break;
+          case 'get_auth_list':
+            let users = node.
+            done();
+            break;
+          case 'set_auth':
             done();
             break;
           case 'ws_close':
@@ -403,14 +486,14 @@ module.exports = function(RED) {
           ocpp2[MSGRESPONSEPAYLOAD] = msg.payload.data || {};
           ocpp2[MSGID] = msg.ocpp.MessageId;
 
-
+          let msgAction = 'INVALID';
           if (cmdIdMap.has(ocpp2[MSGID])){
 
             let cbId = cmdIdMap.get(ocpp2[MSGID]).cbId;
 
             // Check valididty of the command schema
             //
-            let msgAction = cmdIdMap.get(ocpp2[MSGID]).command;
+            msgAction = cmdIdMap.get(ocpp2[MSGID]).command;
             let schemaName = `${msgAction}Response.json`;
 
             let schemaPath = path.join(__dirname, 'schemas', schemaName)
@@ -465,7 +548,7 @@ module.exports = function(RED) {
     node.on('close', function() {
       // need to close the server upon NR (re)deploy or it won't release the ws port
       //
-      server.close();
+      server.close(1000);
     });
   }
 
