@@ -33,12 +33,10 @@
     }
   },
   "dependencies": {
+    "basic-auth": "^2.0.1",
     "debug": "^4.3.4",
     "express": "^4.18.2",
-    "express-basic-auth": "^1.2.1",
-    "express-ws": "^5.0.2",
     "jsonschema": "^1.4.1",
-    "reconnecting-websocket": "^4.4.0",
     "ws": "^8.13.0"
   },
   "devDependencies": {
