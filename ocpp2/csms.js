@@ -57,7 +57,7 @@ module.exports = function(RED) {
     this.ws_pw = config.ws_pw;
     this.messageTimeout = config.messageTimeout || 10000;
 
-    this.basic_auths = this.credentials.basic_auths;
+    this.basic_auths = JSON.parse(this.credentials.basic_auths);
 
     const node = this;
 
@@ -69,46 +69,30 @@ module.exports = function(RED) {
     node.status({ fill: 'blue', shape: 'ring', text: 'CSMS 2.0.1' });
     debug('Starting OCPP2.0.1 CSMS');
 
-    // TODO: Should support a p/w for each CS.
-    // TODO: Option to use single p/w signon:
-    //
-    
-    // debug(`Basic Auth: ${users}`);
-    // users[node.ws_user] = node.ws_pw;
-
     function ocpp2Authenticate(req){
       
-      const users = JSON.parse(node.basic_auths);
+      const users = node.basic_auths;
       const user = auth(req);
       const cbId = req.params.cbId || '';
-      debug(`Try to Auth: ${user.name}, ${user.pass}`);
-
-      if (user.name !== cbId || (!users.hasOwnProperty(user.name)) || (users[user.name] !== user.pass) ){
+      const xxx = JSON.stringify(users);
+      if (!user || !user.hasOwnProperty("name") || !user.hasOwnProperty("pass")){
         return false;
       }
+      debug(`Try to Auth: ${user.name} = ${cbId} with p/w ${user.pass}`);
+
+      if (user.name !== cbId || (!users.hasOwnProperty(user.name)) || (users[user.name] !== user.pass) ){
+        debug('NOT Authorized');
+        return false;
+      }
+      debug('Authorized');
       return true;
       
     }
 
+    function smartSend(msg){
+      msg.hasOwnProperty('_linkSource') ? node.send([null,msg]) : node.send([msg,null]);
+    }
 
-    // Basic authentication middleware
-//    const basicAuth = (req, res, next) => {
-//      const credentials = auth(req);
-//  
-//      debug('XXX I GOT CALLED XXX');
-//      if (!credentials || credentials.name !== 'username' || credentials.pass !== 'password') {
-//        res.statusCode = 401;
-//        res.setHeader('WWW-Authenticate', 'Basic realm="example"');
-//        res.end('Access denied');
-//      } else {
-//        next();
-//      }
-//    };
-
-//    app.use( basicAuth({
-//      users: users,
-//      authorizer: myAuthorizer
-//    }));
 
     // This checks that the subprotocol header for websockets is set to 'ocpp2.0.1'
     const wsOptions = {
@@ -118,12 +102,6 @@ module.exports = function(RED) {
         return protocols.includes(requiredSubProto) ? requiredSubProto : false;
       },
     };
-
-    //const expressServer = http.createServer(wsOptions,app);
-    //const expressWs = expressws(app,expressServer);
-
-    //const expressWs = expressws(expressServer, null, { wsOptions });
-    //const expressWs = expressws(expressServer);
 
     const server = app.listen(node.port);
     const wsServer = new ws.Server({ noServer: true });
@@ -149,11 +127,6 @@ module.exports = function(RED) {
 
     });
 
-    //const server = expressServer.listen(node.port, function() {
-      //expressServer.ws(wspath, function(ws, req, next) {
-      //expressWs.getWss().on('headers',(headers, req) => {
-      //  basicAuth(req,null, () => {});
-      //});
 
 // Set up a headless websocket server that prints any
 // events that come in.
@@ -190,7 +163,7 @@ module.exports = function(RED) {
 
         // Messages sent in are actually buffers (when not using express-ws), so we need to convert it to a string
         const msgIn = msgInBuff.toString();
-        debug(`Get a message from ${cbId}: ${msgIn}`);
+        debug(`Got a message from ${cbId}: ${msgIn}`);
         // let ocpp2 = JSON.parse(msgIn);
         //
         let ocpp2;
@@ -201,16 +174,13 @@ module.exports = function(RED) {
         // do it..                  //
         /////////////////////////////
         if (msgIn.charAt(0) === '[') {
-          debug('NOT Missing brackets');
           ocpp2 = JSON.parse(msgIn.trim());
         } else {
-          debug(`Missing brackets ${msgIn.charAt(0)}`);
           ocpp2 = JSON.parse('[' + msgIn.trim() + ']');
         }
 
         const msgTypeStr = ['Request','Response','Error'][ocpp2[MSGTYPE]-2];
 
-        debug(`Made it here ${msgTypeStr}`);
         // REQUEST, RESPONSE, or ERROR?
         //
         if (ocpp2[MSGTYPE] == REQUEST || ocpp2[MSGTYPE] == RESPONSE){
@@ -243,7 +213,8 @@ module.exports = function(RED) {
 
                 msg.payload.command = c.command;
                 if (c.hasOwnProperty('_linkSource')){
-                  msg._linkSource = c._linkSource; 
+                  // This provides a deep copoy
+                  msg._linkSource = JSON.parse(JSON.stringify(c._linkSource)); 
                 }
                 cmdIdMap.delete(ocpp2[MSGID]);
               } else {
@@ -264,8 +235,6 @@ module.exports = function(RED) {
           // Check valididty of the command schema
           //
           let schemaName = `${msg.payload.command}${msgTypeStr}.json`;
-
-          // debug(`COMMAND SCHEMA: ${schemaName}`);
 
           let schemaPath = path.join(__dirname, 'schemas', schemaName)
 
@@ -289,7 +258,7 @@ module.exports = function(RED) {
             return;
           }
 
-          msg.hasOwnProperty('_linkSource') ? node.send(null,msg) : node.send(msg,null);
+          smartSend(msg);
         }
 
       });
@@ -343,36 +312,51 @@ module.exports = function(RED) {
           return;
         }
 
+        debug(ocpp2[MSGACTION]);
         switch (ocpp2[MSGACTION].toLowerCase()){
           case 'connections':
             let connections = connMap;
 
             msg.payload = { connections };
 
-            msg.hasOwnProperty('_linkSource') ? node.send(null,msg) : node.send(msg,null);
+            smartSend(msg);
             done();
             break;
           case 'cmds':
             let commands = cmdIdMap;
             msg.payload = { commands };
-            msg.hasOwnProperty('_linkSource') ? node.send(null,msg) : node.send(msg,null);
+            smartSend(msg);
             done();
             break;
           case 'get_auth_list':
-            let users = node.
+            //msg.payload = JSON.parse(node.basic_auths);
+            msg.payload = node.basic_auths;
+            debug(msg.payload);
+            smartSend(msg);
             done();
             break;
-          case 'set_auth':
+          case 'set_auth_list':
+            node.basic_auths = msg.payload.data;
+            done();
+            break;
+          case 'get_auth_user':
+            msg.payload = node.basic_auths[msg.payload.data.name];
+            smartSend(msg);
+            done();
+            break;
+
+          case 'set_auth_user':
+            node.basic_auths[msg.payload.data.name] = msg.payload.data.pass;
             done();
             break;
           case 'ws_close':
             msg.payload = "Sorry, not implemented yet";
-            msg.hasOwnProperty('_linkSource') ? node.send(null,msg) : node.send(msg,null);
+            smartSend(msg);
             done();
             break;
           case 'ws_open':
             msg.payload = "Sorry, not implemented yet";
-            msg.hasOwnProperty('_linkSource') ? node.send(null,msg) : node.send(msg,null);
+            smartSend(msg);
             done();
             break;
           default:
@@ -461,12 +445,11 @@ module.exports = function(RED) {
 
         // Save the return link node path if it exists
           if (msg.hasOwnProperty('_linkSource')){
+            // This proivides a deep copy
             cmdInfo._linkSource = JSON.parse(JSON.stringify(msg._linkSource));
           }
 
           cmdIdMap.set(id, cmdInfo);
-
-
 
           setTimeout( function(){
             if (cmdIdMap.has(id)){
@@ -548,6 +531,10 @@ module.exports = function(RED) {
     node.on('close', function() {
       // need to close the server upon NR (re)deploy or it won't release the ws port
       //
+      for ( const [key,value] of connMap) {
+        debug(`Closing connection to ${key}`);
+        value.ws.close(1000);
+      }
       server.close(1000);
     });
   }
