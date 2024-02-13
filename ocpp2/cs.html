@@ -1,98 +1,167 @@
-<!---
-
-  Title: Node-Red-Contrib-OCPP2
-  Author: Bryan Nystrom
-  Company: Argonne National Laborator
-
-  File: cs.html
-  Description: Config file for CS (Charge Station) node.
-
----!>
-
 <style>
-    .header {
-        text-decoration: underline;
-        font-weight: bold;
-        margin-top: 5px;
-    }
-    .bordered {
-        padding-left: 12px;
-        padding-top: 4px;
-        border: 1px solid lightgrey;
-        box-sizing: border-box;
-    }
+  .header {
+    text-decoration: underline;
+    font-weight: bold;
+    margin-top: 5px;
+  }
+  .bordered {
+    padding-left: 12px;
+    padding-top: 4px;
+    border: 1px solid lightgrey;
+    box-sizing: border-box;
+  }
+  dt {
+    font-weight: bold;
+    font-size: larger;
+  }
 </style>
+
 <script type="text/javascript">
-    RED.nodes.registerType('CS', {
-        category: 'OCPP',
-        color: '#16ccff',
-        defaults: {
-            name: {value: ""},
-            csms: {value: "", type: "target-csms", required: true},
-            cbId: {value: "", required: true},
-            ws_rt_minimum: {value: 10, required: true},
-            ws_rt_repeat: {value: 2, required: true},
-            ws_rt_rnd_range: {value: 2, required: true},
-            auto_connect: {value: true}
-        },
-        credentials: {
-            csms_pw: {type: 'password', required: true},
-        },
-        inputs: 1,
-        outputs: 2,
-        icon: 'cs.svg',
-        label: function() {
-            return this.name||this.cbId||"CS";
-        },
-        outputLabels: ['all','link call']
-
-    });
-
+  RED.nodes.registerType("CS", {
+    category: "OCPP",
+    color: "#16ccff",
+    defaults: {
+      name: { value: "" },
+      csms: { value: "", type: "target-csms", required: true },
+      cbId: { value: "", required: true },
+      ws_rt_minimum: { value: 10, required: true },
+      ws_rt_repeat: { value: 2, required: true },
+      ws_rt_rnd_range: { value: 2, required: true },
+      auto_connect: { value: true },
+    },
+    credentials: {
+      csms_pw: { type: "password", required: true },
+    },
+    inputs: 1,
+    outputs: 2,
+    icon: "cs.svg",
+    label: function () {
+      return this.name || this.cbId || "CS";
+    },
+    outputLabels: ["all", "link call"],
+  });
 </script>
 
-<script type="text/x-red" data-template-name='CS'>
+<script type="text/x-red" data-template-name="CS">
 
-    <div class="form-row">
-        <label for="node-input-name"><i class="fa fa-id-card-o"></i> Name</label>
-        <input type="text" id="node-input-name" placeholder="Name (defaults to cbId)" >
-    </div>
+  <div class="form-row">
+      <label for="node-input-name"><i class="fa fa-id-card-o"></i> Name</label>
+      <input type="text" id="node-input-name" placeholder="Name (defaults to cbId)" >
+  </div>
 
-    <div class="form-row">
-        <label for="node-input-cbId"><i class="fa fa-plug"></i> cbId</label>
-        <input type="text" id="node-input-cbId" placeholder="CS Charge Box Id" >
-    </div>
-    <div class="header">Target CSMS</div>
-    <div class="form-row">
-        <label for="node-input-csms"><i class="fa fa-globe"></i> Url</label>
-        <input type="text" id="node-input-csms" placeholder="Target CSMS" >
-    </div>
-    <div class="form-row">
-        <label for="node-input-auto_connect"><i class="icon-tag"></i> Auto Connect</label>
-        <input type="checkbox" id="node-input-auto_connect" >
-    </div>
-    <div class="header">Basic Auth</div>
-    <div class="form-row">
-      <label for="node-input-csms_pw"><i class="fa fa-lock"></i> Password</label>
-        <input type="password" id="node-input-csms_pw" placeholder="password" >
-    </div>
-    <div class="header">Retry Backoff</div>
-    <div class="form-row">
-        <label for="node-input-ws_rt_minimum"><i class="fa fa-clock-o"></i> Min (sec)</label>
-        <input type="number" id="node-input-ws_rt_minimum" min="0">
-    </div>
-    <div class="form-row">
-        <label for="node-input-ws_rt_repeat"><i class="fa fa-repeat"></i> Times to 2x</label>
-        <input type="number" id="node-input-ws_rt_repeat" min="0">
-    </div>
-    <div class="form-row">
-        <label for="node-input-ws_rt_rnd_range"><i class="fa fa-random"></i> Max Random Range</label>
-        <input type="number" id="node-input-ws_rt_rnd_range" min="0">
-    </div>
+  <div class="form-row">
+      <label for="node-input-cbId"><i class="fa fa-plug"></i> cbId</label>
+      <input type="text" id="node-input-cbId" placeholder="CS Charge Box Id" >
+  </div>
+  <div class="header">Target CSMS</div>
+  <div class="form-row">
+      <label for="node-input-csms"><i class="fa fa-globe"></i> Url</label>
+      <input type="text" id="node-input-csms" placeholder="Target CSMS" >
+  </div>
+  <div class="form-row">
+      <label for="node-input-auto_connect"><i class="icon-tag"></i> Auto Connect</label>
+      <input type="checkbox" id="node-input-auto_connect" >
+  </div>
+  <div class="header">Basic Auth</div>
+  <div class="form-row">
+    <label for="node-input-csms_pw"><i class="fa fa-lock"></i> Password</label>
+      <input type="password" id="node-input-csms_pw" placeholder="password" >
+  </div>
+  <div class="header">Retry Backoff</div>
+  <div class="form-row">
+      <label for="node-input-ws_rt_minimum"><i class="fa fa-clock-o"></i> Min (sec)</label>
+      <input type="number" id="node-input-ws_rt_minimum" min="0">
+  </div>
+  <div class="form-row">
+      <label for="node-input-ws_rt_repeat"><i class="fa fa-repeat"></i> Times to inc</label>
+      <input type="number" id="node-input-ws_rt_repeat" min="0">
+  </div>
+  <div class="form-row">
+      <label for="node-input-ws_rt_rnd_range"><i class="fa fa-random"></i> Max Random Range</label>
+      <input type="number" id="node-input-ws_rt_rnd_range" min="0">
+  </div>
 </script>
 
-<script type="text/x-red" data-help-name='CS'>
-    <p>OCPP 2.0.1 Charging Station</p>
+<script type="text/x-red" data-help-name="CS">
+          <p>OCPP 2.0.1 Charging Station</p>
+          <br/>
+          This is an OCPP 2.0.1 Charge Station (CS) node.
+          <hr/>
+          <br/>
+            <h3>Configuration Settings</h3>
+            <dl>
+            <dt>Name:</dt>
+            <dd>Name displayed on node. Defaults to ChargeBoxID</dd>
+            <dt>cbId</dt>
+            <dd>Unique ChargeBoxId</dd>
+            <dt>Target CSMS / Url:</dt>
+            <dd>Select or create a CSMS for this CS to connect to.</dd>
+            <dt>Auto Connect</dt>
+            <dd>Select if the node attempts attempts to connect to the CSMS as soon as it is first initialized.
+                Otherwise, a manual injection of a msgType: 99, command: "connect" will be needed to start a connection.
+            </dd>
+            <dt>Basic Auth / Password:</dt>
+            <dd>Use this to default the password used to connect to the CSMS</dd>
+            <dt>Retry Backoff / Min (Sec)</dt>
+            <dd>The minimum amount of time to wait for the first reconnect retry</dd>
+            <dt>Retry Backoff / Times to inc</dt>
+            <dd>Number of times to increase delay time by Min (Sec)</dd>
+            <dt>Retry Backoff / Max Random Range</dt>
+        <dd>Max time in seconds to randomize each retry. eg: waittime + random(0 - x).</dd>
+            </dl>
 
+        <h3>Input</h3>
+        <h4>OCPP messages</h4>
+        These messages are OCPP 2.0.1 formatted messages, either of type 2 (Request), 3 (Response), or 4 (CallError).
+        <dl>
+          <dt><code>msg.payload.msgType</code></dt><dd> defaults to 2 (Request). Must be number 2, 3, 4, or 99 (for control messages)</dd>
+          <dt><code>msg.payload.command</code></dt><dd>string containing valid OCPP command. Used in requests and control messages only</dd>
+          <dt><code>msg.payload.data</code></dt><dd>object containing valid OCPP 2.x command data for control variables</dd>
+          <dt><code>msg.payload.customData</code></dt><dd>an object or variable that is returned with response message from the CSMS</dd>
+        <h4>Node Control</h4>
+        These are messages that can be sent to the node that used to control and configure the node at runtime.
+        These messages generally do not result in a message being sent to the CSMS. For example, after recieving a "Set Variable" message
+        from the CSMS to update the login password, you can configure the CS to now use that password. The same applies to things
+      like RetryBackOff settings that are sent from the CSMS.
+    <br/>
+    <p>Control messages must have a message type of 99.</p>
+        <code> msg.payload = { msgType: 99, command: "connect"}</code>
+        <br/><p>Supported "command" types:
+        <dl>
+        <dt><code>"connect"</code></dt>
+        <dd>
+          Cause the CS to try to connec to the CSMS
+          Include a <code>msg.payload.data</code> object with one or more of the following:
+          <ul>
+            <li><code>cbId</code> to change the ChargeBoxId identifier of this CS when connecting</li>
+            <li><code>password</code> to update the password used to connect to the CSMS</li>
+            <li><code>csmsUrl</code> to change the target CSMS URL</li>
+          </ul>
+        for example:
+        <code>msg.payload = {
+            msgType: 99,
+            command: "connect",
+            data: {
+                password: "newpw",
+                csmsUrl: "ws://xxx.xxx.xxx"
+            }
+          }</code>
+        <br/><br/>
+        </dd>
+        <dt><code>"close"</code></dt><dd>Cause the CS to disconnect from the CSMS. No retrys will happen</dd>
+        <dt><code>"retrybackoff"</code></dt><dd>Set the Retry Backoff variables. Include a msg.payload.data object that
+        contains a variable / value pair of one or more of the following:
+        <ul>
+          <li> <code>RetryBackOffWaitMinimum</code> for setting the minimum wait time.</li>
+          <li> <code>RetryBackOffRandomRange</code> for setting the random range added to the waittime</li>
+          <li> <code>RetryBackOffRepeateTimes</code> for setting the number of times to increase the waittime</li>
+        </ul>
+  </dd>
+
+
+
+        <h3>Output</h3>
+        <h3>Details</h3>
 </script>
 
 <!--
@@ -116,12 +185,13 @@
 </script>
 
 <script type="text/x-red" data-template-name="target-csms">
-  <div class="from-row">
-    <label for="node-config-input-name"><i class="icon-bookmark"></i> Name</label>
-    <input type="text" id="node-config-input-name", placeholder="Name is CSMS"/>
+  <div class="header">Target CSMS</div>
+  <div class="form-row">
+    <label for="node-config-input-name"><i class="fa fa-id-card-o"></i> Name</label>
+    <input type="text" id="node-config-input-name", placeholder="Name of CSMS"/>
   </div>
-  <div class="from-row">
-    <label for="node-config-input-url"><i class="icon-globe"></i> Name</label>
+  <div class="form-row">
+    <label for="node-config-input-url"><i class="fa fa-globe"></i> URL</label>
     <input type="text" id="node-config-input-url", placeholder="ws://localhost:1234/ocpp"/>
   </div>
 </script>
@@ -139,3 +209,14 @@
     <i>Example: ws://my_csms.com:8888/ocpp</i></dd>
   </dl>
 </script>
+
+<!---
+
+  Title: Node-Red-Contrib-OCPP2
+  Author: Bryan Nystrom
+  Company: Argonne National Laborator
+
+  File: cs.html
+  Description: Config file for CS (Charge Station) node.
+
+--->
