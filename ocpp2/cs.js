@@ -1,4 +1,4 @@
-/* CS: Charging Station
+/* CS: Cherging Station
 
   Title: Node-Red-Contrib-OCPP2
   Author: Bryan Nystrom
@@ -40,13 +40,13 @@ const RESPONSE = 3;
 const CALLERROR = 4;
 const CONTROL = 99;
 
-const WSTOMIN_DEF = 5;
-const WSTOMAX_DEF = 360;
-const WSTOINC_DEF = 5;
+const WSRTMIN_DEF = 1;
+const WSRTRPT_DEF = 2;
+const WSRTRND_DEF = 0;
 
 const OCPPPROTOCOL = ["ocpp2.0.1"];
 
-let NetStatus = "OFFLINE";
+let NetStatus = "BOOT";
 
 const cmdIdMap = new Map();
 
@@ -60,25 +60,31 @@ module.exports = function (RED) {
     this.cbId = config.cbId;
     this.csms = RED.nodes.getNode(config.csms);
     this.csms_url = this.csms.url;
-    // TODO: csms users is required to be same as cbId
-    // TODO: cmsm_pw should be CS specific
-    // TODO: need to support updating pw from input
-    // this.csms_user = config.csms_user;
     this.csms_user = this.cbId;
     this.csms_pw = this.credentials.csms_pw;
     this.messageTimeout = config.messageTimeout || 10000;
     this.auto_connect = config.auto_connect;
 
-    this.wstomin = isNaN(Number.parseInt(config.wstomin))
-      ? WSTOMIN_DEF
-      : Number.parseInt(config.wstomin);
+    this.ws_rt_minimum = isNaN(Number.parseInt(config.ws_rt_minimum))
+      ? WSRTMIN_DEF
+      : Number.parseInt(config.ws_rt_minimum);
+    this.ws_rt_repeat = isNaN(Number.parseInt(config.ws_rt_repeat))
+      ? WSRTRPT_DEF
+      : Number.parseInt(config.ws_rt_repeat);
+    this.ws_rt_rnd_range = isNaN(Number.parseInt(config.ws_rt_rnd_range))
+      ? WSRTRNG_DEF
+      : Number.parseInt(config.ws_rt_rnd_range);
+    /*
     let _wstomax = isNaN(Number.parseInt(config.wstomax))
-      ? WSTOMAX_DEF
+      ? WSRTRET_DEF
       : Number.parseInt(config.wstomax);
-    this.wstomax = parseInt(_wstomax >= this.wstomin ? _wstomax : this.wstomin);
-    this.wstoinc = isNaN(Number.parseInt(config.wstoinc))
-      ? WSTOINC_DEF
-      : Number.parseInt(config.wstoinc);
+    this.ws_rt_maximum = parseInt(_wstomax >= this.wstomin ? _wstomax : this.wstomin);
+    this.ws_rt_random = isNaN(Number.parseInt(config.ws_rt_random))
+      ? WSRTRND_DEF
+      : Number.parseInt(config.ws_rt_random);
+    */
+    this.NetStatus = NetStatus;
+    this.debug = debug;
 
     const node = this;
 
@@ -87,8 +93,8 @@ module.exports = function (RED) {
     let csmsURL;
     let ws;
     let wsreconncnt = 0;
-    let wstocur = parseInt(node.wstomin);
-    let conto;
+    let wstocur = parseInt(node.ws_rt_minimum);
+    let conto = null;
     let wstryreconn = true;
 
     try {
@@ -110,9 +116,9 @@ module.exports = function (RED) {
     };
 
     function reconn_debug() {
-      debug(`wstomin: ${node.wstomin}`);
-      debug(`wstomax: ${node.wstomax}`);
-      debug(`wstoinc: ${node.wstoinc}`);
+      debug(`ws_rt_minimum: ${node.ws_rt_minimum}`);
+      debug(`ws_rt_repeat: ${node.ws_rt_repeat}`);
+      debug(`ws_rt_rnd_range: ${node.ws_rt_rnd_range}`);
       debug(`wstocur: ${wstocur}`);
       debug(`wsreconncnt: ${wsreconncnt}`);
     }
@@ -121,20 +127,23 @@ module.exports = function (RED) {
       let msg = {};
       msg.ocpp = {};
       wsreconncnt = 0;
-      wstocur = parseInt(node.wstomin);
+      wstocur = parseInt(node.ws_rt_minimum);
       node.status({ fill: "green", shape: "dot", text: "Connected..." });
       node.wsconnected = true;
       wsreconncnt = 0;
-      wstocur = node.wstomin;
       msg.ocpp.websocket = "ONLINE";
-      if (NetStatus != msg.ocpp.websocket) {
+      if (node.NetStatus != msg.ocpp.websocket) {
         node.send(msg); //send update
-        NetStatus = msg.ocpp.websocket;
+        node.NetStatus = msg.ocpp.websocket;
       }
 
       // Add a ping intervale timer
       hPingTimer = setInterval(() => {
-        ws.ping();
+        try {
+          ws.ping();
+        } catch (error) {
+          debug(`Ping Error: ${error}`);
+        }
       }, 30000);
     };
 
@@ -146,9 +155,11 @@ module.exports = function (RED) {
       node.status({ fill: "red", shape: "dot", text: "Closed" });
       node.wsconnected = false;
       msg.ocpp.websocket = "OFFLINE";
-      if (NetStatus != msg.ocpp.websocket) {
+      debug("WENT TO OFFLINE....");
+      if (node.NetStatus != msg.ocpp.websocket) {
+        debug("SENDING MSG WITH WEBSOCKET OFFLINE");
         node.send(msg); //send update
-        NetStatus = msg.ocpp.websocket;
+        node.NetStatus = msg.ocpp.websocket;
       }
       // Stop the ping timer
       if (hPingTimer != null) {
@@ -169,14 +180,21 @@ module.exports = function (RED) {
         wsreconncnt += 1;
         node.status({
           fill: "red",
-          shape: "dot",
-          text: `(${wsreconncnt}) Reconnecting `,
+          shape: "ring",
+          text: `Reconn #${wsreconncnt} in ${wstocur}sec `,
         });
-        conto = setTimeout(() => ws_connect(), wstocur * 1000);
-        debug(`ws reconnect timeout: ${wstocur}`);
+        conto = setTimeout(
+          () => ws_connect(),
+          wstocur * 1000 +
+            (Math.random() * (node.ws_rt_rnd_range * 1000 - 0) + 0),
+        );
+        debug(`reconnect timeout: ${wstocur}`);
+        debug(`retry minimum: ${node.ws_rt_minimum}`);
+        debug(`reconnect cnt: ${wsreconncnt}`);
         // adjust the timeout value for the next round
-        wstocur += +node.wstoinc;
-        wstocur = wstocur >= node.wstomax ? node.wstomax : wstocur;
+        if (wsreconncnt <= node.ws_rt_repeat) {
+          wstocur += node.ws_rt_minimum;
+        }
       } else {
         node.status({ fill: "red", shape: "dot", text: `Closed` });
       }
@@ -255,8 +273,8 @@ module.exports = function (RED) {
 
               msg.payload.command = c.command;
 
-              if (Object.prototype.hasOwnProperty.call(c, "callbackData")) {
-                msg.callbackData = c.callbackData;
+              if (Object.prototype.hasOwnProperty.call(c, "customData")) {
+                msg.customData = c.customData;
               }
               if (Object.prototype.hasOwnProperty.call(c, "_linkSource")) {
                 msg._linkSource = c._linkSource;
@@ -331,7 +349,7 @@ module.exports = function (RED) {
 
     function ws_reconnect() {
       debug("Clearing Timeout");
-      clearTimeout(conto);
+      if (conto) clearTimeout(conto);
       try {
         if (ws) {
           ws.removeEventListener("open", ws_open);
@@ -341,7 +359,7 @@ module.exports = function (RED) {
           ws.close();
           //ws = null;
         }
-        clearTimeout(conto);
+        if (conto) clearTimeout(conto);
         ws_connect();
       } catch (error) {
         debug(`Websocket Error: ${error}`);
@@ -383,7 +401,7 @@ module.exports = function (RED) {
 
         switch (ocpp2[msgAction].toLowerCase()) {
           case "connect":
-            clearTimeout(conto);
+            if (conto) clearTimeout(conto);
             if (msg.payload.data) {
               debug("++++++++++++++++++++++++++++++++++");
               debug("has msg.payload.data");
@@ -439,6 +457,45 @@ module.exports = function (RED) {
               ws = null;
               node.status({ fill: "red", shape: "dot", text: "Closed" });
             }
+            break;
+          case "retrybackoff":
+            if (Object.prototype.hasOwnProperty.call(msg.payload, "data")) {
+              let data = msg.payload.data;
+              if (
+                Object.prototype.hasOwnProperty.call(
+                  data,
+                  "RetryBackOffWaitMinimum",
+                )
+              ) {
+                node.ws_rt_minimum =
+                  parseInt(msg.payload.data.RetryBackOffWaitMinimum) ||
+                  node.ws_rt_minimum;
+                wstocur = node.ws_rt_minimum;
+                wsreconncnt = 0;
+              }
+              if (
+                Object.prototype.hasOwnProperty.call(
+                  data,
+                  "RetryBackOffRandomRange",
+                )
+              ) {
+                node.ws_rt_rnd_random =
+                  parseInt(msg.payload.data.RetryBackOffRandomRange) ||
+                  node.ws_rt_rnd_range;
+              }
+              if (
+                Object.prototype.hasOwnProperty.call(
+                  data,
+                  "RetryBackOffRepeatTime",
+                )
+              ) {
+                node.ws_rt_repeat =
+                  ParseInt(msg.payload.data.RetryBackOffRepeatTime) ||
+                  node.ws_rt_repeat;
+              }
+            }
+            wsreconncnt = 0;
+            reconn_debug();
             break;
           default:
             break;
@@ -507,8 +564,8 @@ module.exports = function (RED) {
             c._linkSource = JSON.parse(JSON.stringify(msg._linkSource));
           }
 
-          if (Object.prototype.hasOwnProperty.call(msg, "callbackData")) {
-            c.callbackData = JSON.parse(JSON.stringify(msg.callbackData));
+          if (Object.prototype.hasOwnProperty.call(msg, "customData")) {
+            c.customData = JSON.parse(JSON.stringify(msg.customData));
           }
 
           cmdIdMap.set(id, c);
