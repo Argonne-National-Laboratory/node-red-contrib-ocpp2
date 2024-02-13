@@ -1,0 +1,986 @@
+[
+    {
+        "id": "36458cc6ead13717",
+        "type": "tab",
+        "label": "CS Variables",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "96c0312096559ee0",
+        "type": "group",
+        "z": "36458cc6ead13717",
+        "name": "",
+        "style": {
+            "label": true,
+            "color": "#000000",
+            "fill": "#92d04f"
+        },
+        "nodes": [
+            "f5dc9676077ad2a9",
+            "6d1e9f2afa81739f"
+        ],
+        "x": 34,
+        "y": 19,
+        "w": 262,
+        "h": 82
+    },
+    {
+        "id": "072bfbc132630e52",
+        "type": "group",
+        "z": "36458cc6ead13717",
+        "name": "BackOff Retry",
+        "style": {
+            "label": true
+        },
+        "nodes": [
+            "2546686e2f53b7ab",
+            "2b7d0160652bacd6",
+            "69a0fa640b2c270e",
+            "f79aeda078a99559",
+            "3b9c404c7fe81c77",
+            "777c53bd45689c24",
+            "1ebe70738d0f4f88"
+        ],
+        "x": 904,
+        "y": 456.5,
+        "w": 682,
+        "h": 244.5
+    },
+    {
+        "id": "346cda5331402214",
+        "type": "junction",
+        "z": "36458cc6ead13717",
+        "x": 720,
+        "y": 160,
+        "wires": [
+            [
+                "c035044c660504be"
+            ]
+        ]
+    },
+    {
+        "id": "aa301801fd6ecbab",
+        "type": "switch",
+        "z": "36458cc6ead13717",
+        "name": "Component",
+        "property": "payload.component",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "SampledDataCtrlr",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "AlignedDataCtrlr",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "AuthCacheCtrlr",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "OCPPCommCtrlr",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "LocalAuthListCtrlr",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "AuthCtrlr",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "TxCtrlr",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "SecurityCtrlr",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 8,
+        "x": 510,
+        "y": 180,
+        "wires": [
+            [
+                "346cda5331402214"
+            ],
+            [
+                "346cda5331402214"
+            ],
+            [
+                "346cda5331402214"
+            ],
+            [
+                "346cda5331402214",
+                "85c09d99f9d5d3dc"
+            ],
+            [
+                "346cda5331402214"
+            ],
+            [
+                "346cda5331402214"
+            ],
+            [
+                "346cda5331402214"
+            ],
+            [
+                "73acafbfe3c1f085"
+            ]
+        ]
+    },
+    {
+        "id": "4527c7f9d56766dd",
+        "type": "link in",
+        "z": "36458cc6ead13717",
+        "name": "SetVariable",
+        "links": [
+            "e8f0647f07e3137a"
+        ],
+        "x": 145,
+        "y": 180,
+        "wires": [
+            [
+                "89eb29d624c2d46b",
+                "aa301801fd6ecbab"
+            ]
+        ]
+    },
+    {
+        "id": "07941e2952f379ba",
+        "type": "switch",
+        "z": "36458cc6ead13717",
+        "name": "Component",
+        "property": "payload.component",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "SampledDataCtrlr",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "AlignedDataCtrlr",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "AuthCacheCtrlr",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "OCPPCommCtrlr",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "LocalAuthListCtrlr",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "AuthCtrlr",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "TxCtrlr",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "SecurityCtrlr",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 8,
+        "x": 570,
+        "y": 520,
+        "wires": [
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            []
+        ]
+    },
+    {
+        "id": "3c7b3e842336716d",
+        "type": "link in",
+        "z": "36458cc6ead13717",
+        "name": "GetVariable",
+        "links": [],
+        "x": 185,
+        "y": 520,
+        "wires": [
+            [
+                "07941e2952f379ba",
+                "8e4ed9130d457fa7"
+            ]
+        ]
+    },
+    {
+        "id": "11d76b2682b05160",
+        "type": "comment",
+        "z": "36458cc6ead13717",
+        "name": "Set Variable",
+        "info": "",
+        "x": 210,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "9db70f93b9005573",
+        "type": "comment",
+        "z": "36458cc6ead13717",
+        "name": "Get Variable",
+        "info": "",
+        "x": 290,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "14e887dc3a77836e",
+        "type": "delay",
+        "z": "36458cc6ead13717",
+        "name": "",
+        "pauseType": "delay",
+        "timeout": "2",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 1140,
+        "y": 240,
+        "wires": [
+            [
+                "babeb26ea912e420"
+            ]
+        ]
+    },
+    {
+        "id": "babeb26ea912e420",
+        "type": "function",
+        "z": "36458cc6ead13717",
+        "name": "Close WS",
+        "func": "msg.payload = {\n    \"msgType\": 99,\n    \"command\": \"close\",\n    \"password\": msg.payload.value\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1140,
+        "y": 300,
+        "wires": [
+            [
+                "8deb900c8bd2d186",
+                "640bdc7ff1e3a13e"
+            ]
+        ]
+    },
+    {
+        "id": "8deb900c8bd2d186",
+        "type": "link out",
+        "z": "36458cc6ead13717",
+        "name": "link out 52",
+        "mode": "link",
+        "links": [
+            "acb01d4ad679e408"
+        ],
+        "x": 1285,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "640bdc7ff1e3a13e",
+        "type": "delay",
+        "z": "36458cc6ead13717",
+        "name": "",
+        "pauseType": "delay",
+        "timeout": "2",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 1140,
+        "y": 360,
+        "wires": [
+            [
+                "80095e90304daa42"
+            ]
+        ]
+    },
+    {
+        "id": "80095e90304daa42",
+        "type": "function",
+        "z": "36458cc6ead13717",
+        "name": "Connect w/ PW",
+        "func": "let new_pw = msg.payload.password;\nmsg.payload = {\n    \"msgType\": 99,\n    \"command\": \"connect\",\n    \"data\": {\n        \"password\": new_pw\n    }\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1160,
+        "y": 420,
+        "wires": [
+            [
+                "8deb900c8bd2d186",
+                "205b9cf1b1841146"
+            ]
+        ]
+    },
+    {
+        "id": "205b9cf1b1841146",
+        "type": "debug",
+        "z": "36458cc6ead13717",
+        "name": "debug 91",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1360,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "89eb29d624c2d46b",
+        "type": "debug",
+        "z": "36458cc6ead13717",
+        "name": "debug 93",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 320,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "8e4ed9130d457fa7",
+        "type": "function",
+        "z": "36458cc6ead13717",
+        "name": "Get from Flow",
+        "func": "let retArray = [];\nmsg.payload.varArray.forEach(function(varItem) {\n    let varType = (varItem.hasOwnProperty(\"attributeType\")) ? varItem.attributeType : \"Actual\";\n    let item = `${varItem.component.name}::${varItem.variable.name}::${varType}`;  \n    let value = flow.get(item) || null;\n    if (value) {\n        retArray.push(\n            {\n                attributeStatus: \"Accepted\",\n                attributeType: varType,\n                component: {\n                    name: varItem.component.name\n                },\n                variable: {\n                    name: varItem.variable.name\n                },\n                attributeValue: value\n            }\n        )\n    }\n    else {\n        retArray.push(\n            {\n                attributeStatus: \"UnknownComponent\",\n                attributeType: varType,\n                component: {\n                    name: varItem.component.name\n                },\n                variable: {\n                    name: varItem.variable.name\n                }\n            }\n        )\n\n    }\n    \n});\n\nmsg.payload.data = {};\nmsg.payload.data.getVariableResult = retArray;\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 640,
+        "wires": [
+            [
+                "118fa4fc9d48761e"
+            ]
+        ]
+    },
+    {
+        "id": "73acafbfe3c1f085",
+        "type": "switch",
+        "z": "36458cc6ead13717",
+        "name": "variable",
+        "property": "payload.variable",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "BasicAuthPassword",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 720,
+        "y": 280,
+        "wires": [
+            [
+                "48578ecb8ab596ca",
+                "e99b8962d4e170a7"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "118fa4fc9d48761e",
+        "type": "link out",
+        "z": "36458cc6ead13717",
+        "name": "link out 56",
+        "mode": "return",
+        "links": [],
+        "x": 595,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "0703688dc5e26d18",
+        "type": "inject",
+        "z": "36458cc6ead13717",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 460,
+        "y": 720,
+        "wires": [
+            [
+                "a99198992209f347"
+            ]
+        ]
+    },
+    {
+        "id": "a99198992209f347",
+        "type": "change",
+        "z": "36458cc6ead13717",
+        "name": "Prepopulate Vars",
+        "rules": [
+            {
+                "t": "set",
+                "p": "TxCtrlr::TxStartPoint::Actual",
+                "pt": "flow",
+                "to": "EVConnected, Authorized",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "TxCtrlr::TxStopPoint::Actual",
+                "pt": "flow",
+                "to": "ParkingBayOccupancy,Authorized,EVConnected,PowerPathClosed,EnergyTransfer",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "SecurityCtrlr::BasicAuthPassword::Actual",
+                "pt": "flow",
+                "to": "awesome1awesome1",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "OCPPCommCtrlr::RetryBackOffRepeatTimes::Actual",
+                "pt": "flow",
+                "to": "2",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "OCPPCommCtrlr::RetryBackOffRandomRange::Actual",
+                "pt": "flow",
+                "to": "0",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "OCPPCommCtrlr::RetryBackOffWaitMinimum::Actual",
+                "pt": "flow",
+                "to": "20",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "OCPPCommCtrlr::OfflineThreshold::Actual",
+                "pt": "flow",
+                "to": "60",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 650,
+        "y": 720,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "f5dc9676077ad2a9",
+        "type": "inject",
+        "z": "36458cc6ead13717",
+        "g": "96c0312096559ee0",
+        "name": "ws connect",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"msgType\":99,\"command\":\"connect\"}",
+        "payloadType": "json",
+        "x": 140,
+        "y": 60,
+        "wires": [
+            [
+                "6d1e9f2afa81739f"
+            ]
+        ]
+    },
+    {
+        "id": "6d1e9f2afa81739f",
+        "type": "link out",
+        "z": "36458cc6ead13717",
+        "g": "96c0312096559ee0",
+        "name": "link out 58",
+        "mode": "link",
+        "links": [
+            "acb01d4ad679e408"
+        ],
+        "x": 255,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "48578ecb8ab596ca",
+        "type": "debug",
+        "z": "36458cc6ead13717",
+        "name": "debug 95",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1140,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "d059084088c6ef0b",
+        "type": "function",
+        "z": "36458cc6ead13717",
+        "name": "SetVariables",
+        "func": "// We need to clone this message since we need to\n// pass back the original msg.. it contains info on the link\n// to return to\n\nlet msg2 = RED.util.cloneMessage(msg);\n\nmsg.payload = {\n    msgType: 3,\n    data: {\n        setVariableResult: []\n    }\n}\n \nlet setId = RED.util.generateId();\n // iterate the variables to set and push them onto the \n // msg array item\n \nlet itemId = 0;\nlet itemArray = [];\n\n\n\nmsg2.payload.data.setVariableData.forEach(function(setVar) {\n    let x = {\n        payload: {\n            setId,\n            itemId,\n            component: setVar.component.name,\n            variable: setVar.variable.name,\n            value: setVar.attributeValue,\n            varType: setVar.attributeType || \"Actual\"\n        }\n    }\n    itemArray.push(x.payload);\n    node.send([null,x]);\n    itemId++;\n });\nmsg.setId = setId;\nmsg.itemArray = itemArray;\nreturn [msg,null]\n\n",
+        "outputs": 2,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 310,
+        "y": 900,
+        "wires": [
+            [
+                "81eb2bc4388f9cb8",
+                "9408f1803c93c548"
+            ],
+            [
+                "e8f0647f07e3137a"
+            ]
+        ]
+    },
+    {
+        "id": "3c5bf9a8698d231c",
+        "type": "link in",
+        "z": "36458cc6ead13717",
+        "name": "OCTTCS1:REQ:SetVariables",
+        "links": [],
+        "x": 185,
+        "y": 900,
+        "wires": [
+            [
+                "d059084088c6ef0b"
+            ]
+        ]
+    },
+    {
+        "id": "1e894c342fcab3c2",
+        "type": "link out",
+        "z": "36458cc6ead13717",
+        "name": "CS2:REQ:SetVariables-out",
+        "mode": "return",
+        "links": [],
+        "x": 745,
+        "y": 900,
+        "wires": []
+    },
+    {
+        "id": "81eb2bc4388f9cb8",
+        "type": "debug",
+        "z": "36458cc6ead13717",
+        "name": "debug 88",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 500,
+        "y": 840,
+        "wires": []
+    },
+    {
+        "id": "e8f0647f07e3137a",
+        "type": "link out",
+        "z": "36458cc6ead13717",
+        "name": "link out 55",
+        "mode": "link",
+        "links": [
+            "4527c7f9d56766dd"
+        ],
+        "x": 445,
+        "y": 960,
+        "wires": []
+    },
+    {
+        "id": "e99b8962d4e170a7",
+        "type": "function",
+        "z": "36458cc6ead13717",
+        "name": "Accept or Reject",
+        "func": "let ctxName = `VarStatus::${msg.payload.setId}`;\nlet varStatus = flow.get(ctxName) || [];\n\n// Password must be between 16 and 40 chars\n//\nlet valid = (msg.payload.value.length >= 16) && (msg.payload.value.length <= 40);\nnode.warn(valid);\nvarStatus[msg.payload.itemId] =  (valid) ? \"Accepted\" : \"Rejected\";\nflow.set(ctxName,varStatus);\n\nif (valid){\n    return msg;\n}\nelse return null;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 920,
+        "y": 300,
+        "wires": [
+            [
+                "14e887dc3a77836e"
+            ]
+        ]
+    },
+    {
+        "id": "c035044c660504be",
+        "type": "function",
+        "z": "36458cc6ead13717",
+        "name": "Accepted",
+        "func": "let ctxName = `VarStatus::${msg.payload.setId}`;\nlet varStatus = flow.get(ctxName) || [];\nlet status = typeof(msg.payload.value) == 'string'? \"Accepted\" : \"InvalidValue\"; \nvarStatus[msg.payload.itemId] = status;\nflow.set(ctxName,varStatus);\nreturn (status == \"Accepted\")? msg : null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 920,
+        "y": 120,
+        "wires": [
+            [
+                "275022b1407fe7c4",
+                "3ae2410ac5a2d328"
+            ]
+        ]
+    },
+    {
+        "id": "275022b1407fe7c4",
+        "type": "function",
+        "z": "36458cc6ead13717",
+        "name": "Save to Flow",
+        "func": "let item = `${msg.payload.component}::${msg.payload.variable}::${msg.payload.varType}`\nflow.set(item,msg.payload.value);\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1210,
+        "y": 80,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "3bbb61e3f45bc81b",
+        "type": "function",
+        "z": "36458cc6ead13717",
+        "name": "function 20",
+        "func": "let setId = msg.setId;\nlet itemArray = msg.itemArray;\n\nlet attrStatus = flow.get(`VarStatus::${setId}`);\nlet status = (attrStatus == \"Accepted\")? attrStatus : \"Rejected\";\nflow.set(`VarStatus::${setId}`,null);\nnode.warn(attrStatus);\nitemArray.forEach(function(item) {\n    \n    let varRes = {\n        attributeStatus: attrStatus[item.itemId],\n        component: {\n            name: item.component\n        },\n        variable: {\n            name: item.variable\n        }\n    }\n\n    if (attrStatus == \"InvalidValue\"){\n        varRes.attributeStatusInfo = attrStatus;\n    }\n    msg.payload.data.setVariableResult.push(varRes);\n})\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 630,
+        "y": 900,
+        "wires": [
+            [
+                "1e894c342fcab3c2"
+            ]
+        ]
+    },
+    {
+        "id": "9408f1803c93c548",
+        "type": "delay",
+        "z": "36458cc6ead13717",
+        "name": "",
+        "pauseType": "delay",
+        "timeout": "1",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 480,
+        "y": 900,
+        "wires": [
+            [
+                "3bbb61e3f45bc81b"
+            ]
+        ]
+    },
+    {
+        "id": "3ae2410ac5a2d328",
+        "type": "debug",
+        "z": "36458cc6ead13717",
+        "name": "debug 100",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1210,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "69a0fa640b2c270e",
+        "type": "function",
+        "z": "36458cc6ead13717",
+        "g": "072bfbc132630e52",
+        "name": "RetryBackOff",
+        "func": "let retrybackoff = {}\nretrybackoff[msg.payload.variable] = msg.payload.value;\nmsg.payload.command = \"retrybackoff\";\nmsg.payload.msgType = 99;\nmsg.payload.data = retrybackoff;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1270,
+        "y": 520,
+        "wires": [
+            [
+                "3b9c404c7fe81c77",
+                "777c53bd45689c24"
+            ]
+        ]
+    },
+    {
+        "id": "2546686e2f53b7ab",
+        "type": "switch",
+        "z": "36458cc6ead13717",
+        "g": "072bfbc132630e52",
+        "name": "RetryBackOff",
+        "property": "payload.variable",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "RetryBackOffRepeateTimes",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "RetryBackOffWaitMinimum",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "RetryBackOffRandomRange",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "OfflineThreshold",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 5,
+        "x": 1070,
+        "y": 520,
+        "wires": [
+            [
+                "69a0fa640b2c270e"
+            ],
+            [
+                "69a0fa640b2c270e"
+            ],
+            [
+                "69a0fa640b2c270e"
+            ],
+            [
+                "1ebe70738d0f4f88"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "85c09d99f9d5d3dc",
+        "type": "link out",
+        "z": "36458cc6ead13717",
+        "name": "link out 67",
+        "mode": "link",
+        "links": [
+            "2b7d0160652bacd6"
+        ],
+        "x": 785,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "2b7d0160652bacd6",
+        "type": "link in",
+        "z": "36458cc6ead13717",
+        "g": "072bfbc132630e52",
+        "name": "link in 7",
+        "links": [
+            "85c09d99f9d5d3dc"
+        ],
+        "x": 945,
+        "y": 520,
+        "wires": [
+            [
+                "2546686e2f53b7ab",
+                "f79aeda078a99559"
+            ]
+        ]
+    },
+    {
+        "id": "3b9c404c7fe81c77",
+        "type": "link out",
+        "z": "36458cc6ead13717",
+        "g": "072bfbc132630e52",
+        "name": "link out 68",
+        "mode": "link",
+        "links": [
+            "acb01d4ad679e408"
+        ],
+        "x": 1395,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "777c53bd45689c24",
+        "type": "debug",
+        "z": "36458cc6ead13717",
+        "g": "072bfbc132630e52",
+        "name": "debug 101",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1470,
+        "y": 560,
+        "wires": []
+    },
+    {
+        "id": "f79aeda078a99559",
+        "type": "debug",
+        "z": "36458cc6ead13717",
+        "g": "072bfbc132630e52",
+        "name": "debug 102",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1050,
+        "y": 660,
+        "wires": []
+    },
+    {
+        "id": "1ebe70738d0f4f88",
+        "type": "link out",
+        "z": "36458cc6ead13717",
+        "g": "072bfbc132630e52",
+        "name": "link out 71",
+        "mode": "link",
+        "links": [
+            "c29593c0d27cbd4f"
+        ],
+        "x": 1215,
+        "y": 560,
+        "wires": []
+    }
+]
