@@ -30,9 +30,9 @@
             name: {value: ""},
             csms: {value: "", type: "target-csms", required: true},
             cbId: {value: "", required: true},
-            wstomin: {value: 5, required: true}, 
-            wstomax: {value: 360, required: true},
-            wstoinc: {value: 5, required: true},
+            ws_rt_minimum: {value: 10, required: true},
+            ws_rt_repeat: {value: 2, required: true},
+            ws_rt_rnd_range: {value: 2, required: true},
             auto_connect: {value: true}
         },
         credentials: {
@@ -53,17 +53,17 @@
 <script type="text/x-red" data-template-name='CS'>
 
     <div class="form-row">
-        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+        <label for="node-input-name"><i class="fa fa-id-card-o"></i> Name</label>
         <input type="text" id="node-input-name" placeholder="Name (defaults to cbId)" >
     </div>
-    
+
     <div class="form-row">
-        <label for="node-input-cbId"><i class="icon-tag"></i> cbId</label>
+        <label for="node-input-cbId"><i class="fa fa-plug"></i> cbId</label>
         <input type="text" id="node-input-cbId" placeholder="CS Charge Box Id" >
     </div>
     <div class="header">Target CSMS</div>
     <div class="form-row">
-        <label for="node-input-csms"><i class="icon-tag"></i> Url</label>
+        <label for="node-input-csms"><i class="fa fa-globe"></i> Url</label>
         <input type="text" id="node-input-csms" placeholder="Target CSMS" >
     </div>
     <div class="form-row">
@@ -72,21 +72,21 @@
     </div>
     <div class="header">Basic Auth</div>
     <div class="form-row">
-        <label for="node-input-csms_pw"><i class="icon-tag"></i> Password</label>
+      <label for="node-input-csms_pw"><i class="fa fa-lock"></i> Password</label>
         <input type="password" id="node-input-csms_pw" placeholder="password" >
     </div>
-    <div class="header">Reconnect Rate</div>
+    <div class="header">Retry Backoff</div>
     <div class="form-row">
-        <label for="node-input-wstomin"><i class="icon-timer"></i> Min (sec)</label>
-        <input type="number" id="node-input-wstomin" min="0">
+        <label for="node-input-ws_rt_minimum"><i class="fa fa-clock-o"></i> Min (sec)</label>
+        <input type="number" id="node-input-ws_rt_minimum" min="0">
     </div>
     <div class="form-row">
-        <label for="node-input-wstomax"><i class="icon-timer"></i> Max (sec)</label>
-        <input type="number" id="node-input-wstomax" min="0">
+        <label for="node-input-ws_rt_repeat"><i class="fa fa-repeat"></i> Times to 2x</label>
+        <input type="number" id="node-input-ws_rt_repeat" min="0">
     </div>
     <div class="form-row">
-        <label for="node-input-wstoinc"><i class="icon-timer"></i> Inc (sec)</label>
-        <input type="number" id="node-input-wstoinc" min="0">
+        <label for="node-input-ws_rt_rnd_range"><i class="fa fa-random"></i> Max Random Range</label>
+        <input type="number" id="node-input-ws_rt_rnd_range" min="0">
     </div>
 </script>
 
@@ -103,15 +103,15 @@
 -->
 
 <script type="text/javascript">
-  RED.nodes.registerType('target-csms', {
-    category: 'config',
+  RED.nodes.registerType("target-csms", {
+    category: "config",
     defaults: {
-      name: {value: "", required: false},
-      url: { value: "", required: true}
+      name: { value: "", required: false },
+      url: { value: "", required: true },
     },
-    label: function() {
+    label: function () {
       return this.name || this.url || "CSMS";
-    }
+    },
   });
 </script>
 
