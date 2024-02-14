@@ -28,17 +28,30 @@
       ws_rt_repeat: { value: 2, required: true },
       ws_rt_rnd_range: { value: 2, required: true },
       auto_connect: { value: true },
+      ocpp_logging: { value: false },
+      outputs: { value: 1 },
     },
     credentials: {
       csms_pw: { type: "password", required: true },
     },
     inputs: 1,
-    outputs: 2,
+    //outputs: 3,
     icon: "cs.svg",
     label: function () {
       return this.name || this.cbId || "CS";
     },
-    outputLabels: ["all", "link call"],
+    outputLabels: ["all", "link call", "ocpp log"],
+    //Functions
+    oneditprepare: function () {
+      var node = this;
+      node.outputs = $("#node-input-ocpp_logging").prop("checked") ? 3 : 2;
+      $("#node-input-ocpp_logging").change(function () {
+        node.outputs = this.checked ? 3 : 2;
+      });
+    },
+    oneditsave: function () {
+      node.outputs = $("#node-input-ocpp_logging").prop("checked") ? 3 : 2;
+    },
   });
 </script>
 
@@ -52,6 +65,10 @@
   <div class="form-row">
       <label for="node-input-cbId"><i class="fa fa-plug"></i> cbId</label>
       <input type="text" id="node-input-cbId" placeholder="CS Charge Box Id" >
+  </div>
+  <div class="form-row">
+      <label for="node-input-ocpp_logging"><i class="icon-tag"></i> OCPP Logging</label>
+      <input type="checkbox" id="node-input-ocpp_logging" >
   </div>
   <div class="header">Target CSMS</div>
   <div class="form-row">
@@ -82,86 +99,31 @@
   </div>
 </script>
 
-<script type="text/x-red" data-help-name="CS">
-          <p>OCPP 2.0.1 Charging Station</p>
-          <br/>
-          This is an OCPP 2.0.1 Charge Station (CS) node.
-          <hr/>
-          <br/>
-            <h3>Configuration Settings</h3>
-            <dl>
-            <dt>Name:</dt>
-            <dd>Name displayed on node. Defaults to ChargeBoxID</dd>
-            <dt>cbId</dt>
-            <dd>Unique ChargeBoxId</dd>
-            <dt>Target CSMS / Url:</dt>
-            <dd>Select or create a CSMS for this CS to connect to.</dd>
-            <dt>Auto Connect</dt>
-            <dd>Select if the node attempts attempts to connect to the CSMS as soon as it is first initialized.
-                Otherwise, a manual injection of a msgType: 99, command: "connect" will be needed to start a connection.
-            </dd>
-            <dt>Basic Auth / Password:</dt>
-            <dd>Use this to default the password used to connect to the CSMS</dd>
-            <dt>Retry Backoff / Min (Sec)</dt>
-            <dd>The minimum amount of time to wait for the first reconnect retry</dd>
-            <dt>Retry Backoff / Times to inc</dt>
-            <dd>Number of times to increase delay time by Min (Sec)</dd>
-            <dt>Retry Backoff / Max Random Range</dt>
-        <dd>Max time in seconds to randomize each retry. eg: waittime + random(0 - x).</dd>
-            </dl>
+<script type="text/markdown" data-help-name="CS">
+  OCPP 2.0.1 Charging Station (CS)
 
-        <h3>Input</h3>
-        <h4>OCPP messages</h4>
-        These messages are OCPP 2.0.1 formatted messages, either of type 2 (Request), 3 (Response), or 4 (CallError).
-        <dl>
-          <dt><code>msg.payload.msgType</code></dt><dd> defaults to 2 (Request). Must be number 2, 3, 4, or 99 (for control messages)</dd>
-          <dt><code>msg.payload.command</code></dt><dd>string containing valid OCPP command. Used in requests and control messages only</dd>
-          <dt><code>msg.payload.data</code></dt><dd>object containing valid OCPP 2.x command data for control variables</dd>
-          <dt><code>msg.payload.customData</code></dt><dd>an object or variable that is returned with response message from the CSMS</dd>
-        <h4>Node Control</h4>
-        These are messages that can be sent to the node that used to control and configure the node at runtime.
-        These messages generally do not result in a message being sent to the CSMS. For example, after recieving a "Set Variable" message
-        from the CSMS to update the login password, you can configure the CS to now use that password. The same applies to things
-      like RetryBackOff settings that are sent from the CSMS.
-    <br/>
-    <p>Control messages must have a message type of 99.</p>
-        <code> msg.payload = { msgType: 99, command: "connect"}</code>
-        <br/><p>Supported "command" types:
-        <dl>
-        <dt><code>"connect"</code></dt>
-        <dd>
-          Cause the CS to try to connec to the CSMS
-          Include a <code>msg.payload.data</code> object with one or more of the following:
-          <ul>
-            <li><code>cbId</code> to change the ChargeBoxId identifier of this CS when connecting</li>
-            <li><code>password</code> to update the password used to connect to the CSMS</li>
-            <li><code>csmsUrl</code> to change the target CSMS URL</li>
-          </ul>
-        for example:
-        <code>msg.payload = {
-            msgType: 99,
-            command: "connect",
-            data: {
-                password: "newpw",
-                csmsUrl: "ws://xxx.xxx.xxx"
-            }
-          }</code>
-        <br/><br/>
-        </dd>
-        <dt><code>"close"</code></dt><dd>Cause the CS to disconnect from the CSMS. No retrys will happen</dd>
-        <dt><code>"retrybackoff"</code></dt><dd>Set the Retry Backoff variables. Include a msg.payload.data object that
-        contains a variable / value pair of one or more of the following:
-        <ul>
-          <li> <code>RetryBackOffWaitMinimum</code> for setting the minimum wait time.</li>
-          <li> <code>RetryBackOffRandomRange</code> for setting the random range added to the waittime</li>
-          <li> <code>RetryBackOffRepeateTimes</code> for setting the number of times to increase the waittime</li>
-        </ul>
-  </dd>
+  ### Inputs
 
+  1. OCPP messages `msg.payload`
+     : command (string) : valid OCPP 2.x command used in REQUESTS
+     : msgType (int) : 2 = REQUEST, 3 = RESPONSE, 4 = CALLERROR
+     : data (object) : valid OCPP 2.x command data
+     : customData (any) : user custom data returned with matching RESPONSE message
 
+  ### Outputs
 
-        <h3>Output</h3>
-        <h3>Details</h3>
+  1. Standard Output
+     : payload (object) : incoming REQUEST messages and responses from CONTROL messages such as online status
+
+  2. Linked Output
+     : payload (object) : messages that should be passed to a node-red 'link out' node set to "Return to calling link node", mainly incoming RESPONSE messages
+
+  3. OCPP Log Output
+     : payload (object) : Raw output of sent and received ocpp messages. Only viable/available if logging is enabled in config
+
+  ### Details
+
+  `msg.payload` is used in the payload
 </script>
 
 <!--

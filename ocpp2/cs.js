@@ -64,6 +64,7 @@ module.exports = function (RED) {
     this.csms_pw = this.credentials.csms_pw;
     this.messageTimeout = config.messageTimeout || 10000;
     this.auto_connect = config.auto_connect;
+    this.logging_enabled = config.ocpp_logging;
 
     this.ws_rt_minimum = isNaN(Number.parseInt(config.ws_rt_minimum))
       ? WSRTMIN_DEF
@@ -74,15 +75,7 @@ module.exports = function (RED) {
     this.ws_rt_rnd_range = isNaN(Number.parseInt(config.ws_rt_rnd_range))
       ? WSRTRNG_DEF
       : Number.parseInt(config.ws_rt_rnd_range);
-    /*
-    let _wstomax = isNaN(Number.parseInt(config.wstomax))
-      ? WSRTRET_DEF
-      : Number.parseInt(config.wstomax);
-    this.ws_rt_maximum = parseInt(_wstomax >= this.wstomin ? _wstomax : this.wstomin);
-    this.ws_rt_random = isNaN(Number.parseInt(config.ws_rt_random))
-      ? WSRTRND_DEF
-      : Number.parseInt(config.ws_rt_random);
-    */
+
     this.NetStatus = NetStatus;
     this.debug = debug;
 
@@ -115,6 +108,17 @@ module.exports = function (RED) {
       connectTimeout: 5000,
     };
 
+    function log_ocpp_msg(ocpp_msg) {
+      if (node.logging_enabled) {
+        debug(`node.logging_enabled = ${node.logging_enabled}`);
+        let msg = {
+          timestamp: Date.now(),
+          payload: ocpp_msg,
+        };
+        node.send([null, null, msg]);
+      }
+    }
+
     function reconn_debug() {
       debug(`ws_rt_minimum: ${node.ws_rt_minimum}`);
       debug(`ws_rt_repeat: ${node.ws_rt_repeat}`);
@@ -133,7 +137,7 @@ module.exports = function (RED) {
       wsreconncnt = 0;
       msg.ocpp.websocket = "ONLINE";
       if (node.NetStatus != msg.ocpp.websocket) {
-        node.send(msg); //send update
+        node.send([msg, null, null]); //send update
         node.NetStatus = msg.ocpp.websocket;
       }
 
@@ -158,7 +162,7 @@ module.exports = function (RED) {
       debug("WENT TO OFFLINE....");
       if (node.NetStatus != msg.ocpp.websocket) {
         debug("SENDING MSG WITH WEBSOCKET OFFLINE");
-        node.send(msg); //send update
+        node.send([msg, null, null]); //send update
         node.NetStatus = msg.ocpp.websocket;
       }
       // Stop the ping timer
@@ -209,6 +213,7 @@ module.exports = function (RED) {
       let msgIn = event.data;
       let cbId = node.cbId;
       debug(`Got a message from CSMS: ${msgIn}`);
+      log_ocpp_msg(msgIn);
       // let ocpp2 = JSON.parse(msgIn);
       //
       let ocpp2;
@@ -324,8 +329,8 @@ module.exports = function (RED) {
         }
 
         Object.prototype.hasOwnProperty.call(msg, "_linkSource")
-          ? node.send(null, msg)
-          : node.send(msg, null);
+          ? node.send([null, msg, null])
+          : node.send([msg, null, null]);
       }
     };
 
@@ -367,15 +372,17 @@ module.exports = function (RED) {
       }
     }
 
-    // Only do this if auto-connect is enabled
-    //
-    if (node.auto_connect && csmsURL) {
-      node.status({ fill: "blue", shape: "dot", text: `Connecting...` });
-      ws_connect();
-    }
-
     node.on("close", function (msg, send, done) {
       //ws.close(1000);
+      node.status({ fill: orange, shape: "square", text: "Stopping..." });
+
+      if (ws) {
+        //clearTimeout(conto);
+        ws.close();
+        ws = null;
+        node.status({ fill: "red", shape: "dot", text: "Closed" });
+      }
+      done();
     });
     ////////////////////////////////////////////
     // This section is for input from a the   //
@@ -586,6 +593,8 @@ module.exports = function (RED) {
           let ocpp_msg = JSON.stringify(ocpp2);
           debug(`Sending message: ${ocpp_msg}`);
           ws.send(ocpp_msg);
+          log_ocpp_msg(ocpp2);
+
           node.status({
             fill: "green",
             shape: "dot",
@@ -635,6 +644,8 @@ module.exports = function (RED) {
           let ocpp_msg = JSON.stringify(ocpp2);
           debug(`Sending message: ${ocpp_msg}`);
           ws.send(ocpp_msg, ocpp_msg);
+          log_ocpp_msg(ocpp2);
+
           node.status({
             fill: "green",
             shape: "dot",
@@ -643,6 +654,13 @@ module.exports = function (RED) {
         }
       }
     });
+
+    // Only do this if auto-connect is enabled
+    //
+    if (node.auto_connect && csmsURL) {
+      node.status({ fill: "blue", shape: "dot", text: `Connecting...` });
+      ws_connect();
+    }
   }
 
   RED.nodes.registerType("CS", OcppChargeStationNode, {
