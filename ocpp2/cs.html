@@ -100,30 +100,137 @@
 </script>
 
 <script type="text/markdown" data-help-name="CS">
-  OCPP 2.0.1 Charging Station (CS)
+  OCPP 2.0.1 Charging Station (CS) messaging node.
+
+  This node handles connecting, sending, and receiving valid OCPP 2.0.1 messages to an OCPP 2.0.1 CMSM
 
   ### Inputs
 
-  1. OCPP messages `msg.payload`
-     : command (string) : valid OCPP 2.x command used in REQUESTS
-     : msgType (int) : 2 = REQUEST, 3 = RESPONSE, 4 = CALLERROR
-     : data (object) : valid OCPP 2.x command data
-     : customData (any) : user custom data returned with matching RESPONSE message
+  1. OCPP messages in `msg.payload`
+     : command (string) : Valid OCPP 2.x command used in REQUESTS or CONTROL commands
+     : msgType (int) : 2 = REQUEST ( _default_ ), 3 = RESPONSE, 4 = CALLERROR, 99 = Control
+     : data (object) : Valid OCPP 2.x command data, or control data
+     : MessageId (string) : _optional_ user generated unique ID for REQUEST message
+     : cbId (string) : Force a different cbId (chargeBoxId) for the REQUEST message
+     : customData (any) : User custom data returned with matching RESPONSE message
 
   ### Outputs
 
-  1. Standard Output
-     : payload (object) : incoming REQUEST messages and responses from CONTROL messages such as online status
+  1. Standard Output (1)
+     : payload (object) : incoming OCPP REQUEST,RESPONSE,or CALLERROR messages
+     : ocpp (object) : Information about the OCPP message, including MessageId, cbId, commnad, and ocpp version
 
-  2. Linked Output
+  2. Linked Output (2)
      : payload (object) : messages that should be passed to a node-red 'link out' node set to "Return to calling link node", mainly incoming RESPONSE messages
 
-  3. OCPP Log Output
-     : payload (object) : Raw output of sent and received ocpp messages. Only viable/available if logging is enabled in config
+  3. OCPP Log Output (3)
+     : payload (object) : Raw output of sent and received OCPP messages. Only visable/available if logging is enabled in config
 
   ### Details
 
-  `msg.payload` is used in the payload
+  ## **OCPP MESSAGES**
+
+  OCPP message passing between your flows and the CS Node will be of type REQUEST or RESPONSE, depending on if your flow is
+  sending or receiving an OCPP message. REQUEST messages are the default type and therefore do not require a **msgType** parameter.
+
+  Messages are validated (see **SCHEMA VALIDATION** section below )
+
+  Unique message IDs are automatically assigned to any outgoing REQUEST message. You may choose to override this by creating and
+  assigning your own **MessageId** in the payload.
+
+  You may also wish to pass along additional information when sending a REQUEST that will be passed back to your flow when the
+  associated RESPONSE is returned. Any data contained in the **customData** section of the payload is retained and returned in the RESPONSE message.
+
+  Dynamically allocated ChargeBoxIDs (cbId) may also be sent into the paylaod. **NOTE**: This will not alter the CSMS destination URL that
+  is currently assigned to the CS node. It will only alter the route in which the message is delivered to the CSMS. This is a useful
+  way of assigning a cbId at runtime based on an external set of configurations outside of the CS node configuration dialog box.
+
+  REQUEST messages that are sent directly into CS node or from a **link out node**, and **not** through a **link call node**, will have their RESPONSE message output
+  from port 1 of the node.
+
+  REQUEST messages that that are input into the CS node via a **link call node** will have thier RESPONSE messages sent out of port 2. It
+  is ideal to connect a **link out** node to port 2 set to mode **Return to calling link node**
+
+  ## **NODE CONTROL MESSAGES**
+
+  Messages other than OCPP messages can be passed into the CS node. Those messages are referred to here as **CONTROL** messages.
+  They have meaning only to the internals of the CS node and are not transmitted to the CSMS. They may, however, cause actions that
+  cause standard OCPP message communication and network events to the CSMS. For example, connecting and disconnecting the unerlying
+  WebSocket connection.
+
+  #### Connect
+
+  Ask the CS node to attempt to connect to the configured CSMS
+
+  ```json
+  {
+    "msgType": 99,
+    "command": "connect"
+  }
+  ```
+
+  more info can be passed in to the **data** object to cause a dynamic setup of the connection
+
+  ```json
+  {
+    "msgType": 99,
+    "command": "connect",
+    "data": {
+      "cbId": "aNewChargeBoxId",
+      "password": "aNewPassword",
+      "csmsUrl": "wss://www.newurl.com:8888/ocpp/"
+    }
+  }
+  ```
+
+  #### Disconnect
+
+  Ask the CS node to close the Websocket connection to the CSMS
+
+  ```json
+  {
+    "msgType": 99,
+    "command": "close"
+  }
+  ```
+
+  #### Retry Backoff
+
+  Change the OCPP variables related to retrying a dropped WebSocket connection.
+  Refer to the OCPP 2.0.1 documetation for the **OCPPCommCtrlr** device model.
+  One or more of the data parameters should be present in the **data** object.
+
+  ```json
+  {
+    "msgType": 99,
+    "command": "retrybackoff",
+    "data": {
+      "RetryBackoffWaitMinimum": 20,
+      "RetryBackoffRandomRange": 5,
+      "RetryBackoffRepeatTime": 3
+    }
+  }
+  ```
+
+  ## **SCHEMA VALIDATION**
+
+  Messages passed in to the CS node, as well as thouse received from the CSMS are validated to assure they follow the
+  proper format / schema. An ill-formed OCPP message will not be sent and a warning message will be posted to the
+  Node-Red debug pane and output.
+
+  ## **OCPP LOGGING**
+
+  Logging can be enabled the config dialog for the node. When enabled, and extra port is added to the CS node (port 3).
+  The output of the port is the raw OCPP message being sent and received to the node. It is the flow designers responsibility
+  on how to deal with that data. The OCPP message is output payload of message. You may wish to log the output to a **write file** node,
+  send it to MQTT, or send it to a logging service or node.
+
+  ## **WHAT THIS NODE DOES NOT DO**
+
+  This node does not handle the logic involved in the proper operation of an OCPP 2.0.1 Charge Station. Such logic is left to
+  the author of the flows using the node. Example flows are provided, many of which were developed to pass OCTT core tests.
+
+  The current release _ONLY_ supports **BASIC** authentication (security profile 1). Future updates will contaian enhanced security profiles.
 </script>
 
 <!--
