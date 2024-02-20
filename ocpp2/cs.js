@@ -144,7 +144,7 @@ module.exports = function (RED) {
       wsreconncnt = 0;
       msg.ocpp.websocket = "ONLINE";
       if (node.NetStatus != msg.ocpp.websocket) {
-        node.send([msg, null, null]); //send update
+        node.send([msg, null]); //send update
         node.NetStatus = msg.ocpp.websocket;
       }
 
@@ -171,7 +171,7 @@ module.exports = function (RED) {
       debug("WENT TO OFFLINE....");
       if (node.NetStatus != msg.ocpp.websocket) {
         debug("SENDING MSG WITH WEBSOCKET OFFLINE");
-        node.send([msg, null, null]); //send update
+        node.send([msg, null]); //send update
         node.NetStatus = msg.ocpp.websocket;
       }
       // Stop the ping timer
@@ -287,9 +287,11 @@ module.exports = function (RED) {
 
               msg.payload.command = c.command;
 
+              /*
               if (Object.prototype.hasOwnProperty.call(c, "customData")) {
                 msg.customData = c.customData;
               }
+              */
               if (Object.prototype.hasOwnProperty.call(c, "_linkSource")) {
                 msg._linkSource = c._linkSource;
               }
@@ -339,8 +341,8 @@ module.exports = function (RED) {
         }
 
         Object.prototype.hasOwnProperty.call(msg, "_linkSource")
-          ? node.send([null, msg, null])
-          : node.send([msg, null, null]);
+          ? node.send([null, msg])
+          : node.send([msg, null]);
       }
     };
 
@@ -597,9 +599,11 @@ module.exports = function (RED) {
             c._linkSource = JSON.parse(JSON.stringify(msg._linkSource));
           }
 
+          /*
           if (Object.prototype.hasOwnProperty.call(msg, "customData")) {
             c.customData = JSON.parse(JSON.stringify(msg.customData));
           }
+          */
 
           cmdIdMap.set(id, c);
           setTimeout(
