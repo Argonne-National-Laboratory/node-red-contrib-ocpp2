@@ -29,17 +29,20 @@ const { clearTimeout } = require("timers");
 //const Logger = require('./utils/logdata');
 const debug = require("debug")("anl:ocpp2:cs");
 
-const msgType = 0;
-const msgId = 1;
-const msgAction = 2;
-const msgRequestPayload = 3;
-const msgResponsePayload = 2;
+// Array position in OCPP message
+const MSGTYPE = 0;
+const MSGID = 1;
+const MSGACTION = 2;
+const MSGREQPAYLOAD = 3;
+const MSGRESPAYLOAD = 2;
 
+// Types of messages
 const REQUEST = 2;
 const RESPONSE = 3;
 const CALLERROR = 4;
 const CONTROL = 99;
 
+// Retry Backoff defaults
 const WSRTMIN_DEF = 1;
 const WSRTRPT_DEF = 2;
 const WSRTRND_DEF = 0;
@@ -108,11 +111,12 @@ module.exports = function (RED) {
       connectTimeout: 5000,
     };
 
-    function log_ocpp_msg(ocpp_msg) {
+    function log_ocpp_msg(ocpp_msg, msgFrom) {
       if (node.logging_enabled) {
         debug(`node.logging_enabled = ${node.logging_enabled}`);
         let msg = {
           timestamp: Date.now(),
+          msgFrom,
           payload: ocpp_msg,
         };
         node.send([null, null, msg]);
@@ -144,7 +148,9 @@ module.exports = function (RED) {
       // Add a ping intervale timer
       hPingTimer = setInterval(() => {
         try {
-          ws.ping();
+          if (ws) {
+            ws.ping();
+          }
         } catch (error) {
           debug(`Ping Error: ${error}`);
         }
@@ -213,7 +219,6 @@ module.exports = function (RED) {
       let msgIn = event.data;
       let cbId = node.cbId;
       debug(`Got a message from CSMS: ${msgIn}`);
-      log_ocpp_msg(msgIn);
       // let ocpp2 = JSON.parse(msgIn);
       //
       let ocpp2;
@@ -228,12 +233,13 @@ module.exports = function (RED) {
       } else {
         ocpp2 = JSON.parse(msgIn);
       }
+      log_ocpp_msg(ocpp2, "CSMS");
 
-      let msgTypeStr = ["Request", "Response", "Error"][ocpp2[msgType] - 2];
+      let msgTypeStr = ["Request", "Response", "Error"][ocpp2[MSGTYPE] - 2];
 
       // REQUEST, RESPONSE, or ERROR?
       //
-      if (ocpp2[msgType] == REQUEST || ocpp2[msgType] == RESPONSE) {
+      if (ocpp2[MSGTYPE] == REQUEST || ocpp2[MSGTYPE] == RESPONSE) {
         let msg = {};
         msg.ocpp = {};
         msg.payload = {};
@@ -241,17 +247,17 @@ module.exports = function (RED) {
         let mapObj = {};
         msg.ocpp.ocppVersion = "2.0.1";
 
-        switch (ocpp2[msgType]) {
+        switch (ocpp2[MSGTYPE]) {
           case REQUEST:
-            msg.payload.data = ocpp2[msgRequestPayload] || {};
-            msg.payload.command = ocpp2[msgAction] || null;
-            msg.payload.MessageId = ocpp2[msgId];
+            msg.payload.data = ocpp2[MSGREQPAYLOAD] || {};
+            msg.payload.command = ocpp2[MSGACTION] || null;
+            msg.payload.MessageId = ocpp2[MSGID];
             msg.payload.cbId = cbId;
-            msg.ocpp.MessageId = ocpp2[msgId];
-            id = ocpp2[msgId];
+            msg.ocpp.MessageId = ocpp2[MSGID];
+            id = ocpp2[MSGID];
             mapObj = {
               cbId: msg.payload.cbId,
-              command: ocpp2[msgAction],
+              command: ocpp2[MSGACTION],
               time: new Date(),
             };
 
@@ -272,9 +278,9 @@ module.exports = function (RED) {
             );
             break;
           case RESPONSE:
-            msg.payload.data = ocpp2[msgResponsePayload] || {};
-            if (cmdIdMap.has(ocpp2[msgId])) {
-              let c = cmdIdMap.get(ocpp2[msgId]);
+            msg.payload.data = ocpp2[MSGRESPAYLOAD] || {};
+            if (cmdIdMap.has(ocpp2[MSGID])) {
+              let c = cmdIdMap.get(ocpp2[MSGID]);
 
               msg.payload.command = c.command;
 
@@ -284,9 +290,9 @@ module.exports = function (RED) {
               if (Object.prototype.hasOwnProperty.call(c, "_linkSource")) {
                 msg._linkSource = c._linkSource;
               }
-              cmdIdMap.delete(ocpp2[msgId]);
+              cmdIdMap.delete(ocpp2[MSGID]);
             } else {
-              let errMsg = `Expired or invalid RESPONSE: ${ocpp2[msgId]}`;
+              let errMsg = `Expired or invalid RESPONSE: ${ocpp2[MSGID]}`;
               debug(errMsg);
               node.error(errMsg);
               return;
@@ -304,8 +310,6 @@ module.exports = function (RED) {
         //
         let schemaName = `${msg.payload.command}${msgTypeStr}.json`;
 
-        //debug(`COMMAND SCHEMA: ${schemaName}`);
-
         let schemaPath = path.join(__dirname, "schemas", schemaName);
 
         // By first checking if the file exists, we check that the command is an
@@ -313,16 +317,19 @@ module.exports = function (RED) {
         if (fs.existsSync(schemaPath)) {
           let schema = JSON.parse(fs.readFileSync(schemaPath, "utf8"));
 
-          let val = schema_val.validate(ocpp2[msgRequestPayload], schema);
+          let val = schema_val.validate(ocpp2[MSGREQPAYLOAD], schema);
 
           if (val.errors.length > 0) {
             let invalidOcpp2 = val.errors;
+            debug("*********INVALID MESSAGE FORMAT************");
+            debug(JSON.stringify(ocpp2));
+
             done(invalidOcpp2);
             node.error({ invalidOcpp2 });
             return;
           }
         } else {
-          let errMsg = `Invalid OCPP2.0.1 command: ${ocpp2[msgAction]}`;
+          let errMsg = `Invalid OCPP2.0.1 command: ${ocpp2[MSGACTION]}`;
           node.error(errMsg);
           done(errMsg);
           return;
@@ -390,15 +397,22 @@ module.exports = function (RED) {
     ////////////////////////////////////////////
 
     node.on("input", function (msg, send, done) {
+      if (msg.payload.data) {
+        debug("++++++++++++++++++++++++++++++++++");
+        debug("has msg.payload.data");
+        debug(JSON.stringify(msg.payload));
+        debug("++++++++++++++++++++++++++++++++++");
+      }
+
       let ocpp2 = [];
 
-      ocpp2[msgType] = msg.payload.msgType || REQUEST;
-      ocpp2[msgId] = msg.payload.MessageId || crypto.randomUUID();
+      ocpp2[MSGTYPE] = msg.payload.msgType || REQUEST;
+      ocpp2[MSGID] = msg.payload.MessageId || crypto.randomUUID();
 
-      if (ocpp2[msgType] == CONTROL) {
-        ocpp2[msgAction] = msg.payload.command || node.command;
+      if (ocpp2[MSGTYPE] == CONTROL) {
+        ocpp2[MSGACTION] = msg.payload.command || node.command;
 
-        if (!ocpp2[msgAction]) {
+        if (!ocpp2[MSGACTION]) {
           const errStr =
             "ERROR: Missing Control Command in JSON request message";
           node.error(errStr);
@@ -406,7 +420,7 @@ module.exports = function (RED) {
           return;
         }
 
-        switch (ocpp2[msgAction].toLowerCase()) {
+        switch (ocpp2[MSGACTION].toLowerCase()) {
           case "connect":
             if (conto) clearTimeout(conto);
             if (msg.payload.data) {
@@ -507,62 +521,71 @@ module.exports = function (RED) {
           default:
             break;
         }
-        //logger.log(msgTypeStr[request[msgType]], JSON.stringify(request).replace(/,/g, ', '));
+        //logger.log(msgTypeStr[request[MSGTYPE]], JSON.stringify(request).replace(/,/g, ', '));
       } else if (node.wsconnected == true) {
-        if (ocpp2[msgType] == REQUEST) {
-          ocpp2[msgAction] = msg.payload.command || null;
-          ocpp2[msgRequestPayload] = msg.payload.data || {};
-          ocpp2[msgId] = msg.payload.MessageId || crypto.randomUUID();
+        if (ocpp2[MSGTYPE] == REQUEST) {
+          ocpp2[MSGACTION] = msg.payload.command || null;
+          ocpp2[MSGREQPAYLOAD] = msg.payload.data || {};
+          ocpp2[MSGID] = msg.payload.MessageId || crypto.randomUUID();
 
           // Check for missing command in object
-          if (!ocpp2[msgAction]) {
+          if (!ocpp2[MSGACTION]) {
             const errStr = "ERROR: Missing Command in JSON request message";
+            debug(errStr);
             node.error(errStr);
             done(errStr);
             return;
           }
 
+          log_ocpp_msg(ocpp2, "CS");
+
           // Check valididty of the command schema
           //
-          let schemaName = `${ocpp2[msgAction]}Request.json`;
+          let schemaName = `${ocpp2[MSGACTION]}Request.json`;
 
           let schemaPath = path.join(__dirname, "schemas", schemaName);
 
           // By first checking if the file exists, we check that the command is an
           // acutal ocpp2.0.1 command
+          //
           if (fs.existsSync(schemaPath)) {
             let schema = JSON.parse(fs.readFileSync(schemaPath, "utf8"));
 
-            let val = schema_val.validate(ocpp2[msgRequestPayload], schema);
+            let val = schema_val.validate(ocpp2[MSGREQPAYLOAD], schema);
 
             if (val.errors.length > 0) {
+              debug("*********INVALID MESSAGE FORMAT************");
+              debug(`SchemaName ${schemaName}`);
+              debug(JSON.stringify(ocpp2[MSGREQPAYLOAD]));
+              debug(`msg.payload.data: ${JSON.stringify(msg.payload.data)}`);
               let invalidOcpp2 = val.errors;
               done(invalidOcpp2);
               node.error({ invalidOcpp2 });
               return;
             }
           } else {
-            let errMsg = `Invalid OCPP2.0.1 command: ${ocpp2[msgAction]}`;
+            let errMsg = `Invalid OCPP2.0.1 command: ${ocpp2[MSGACTION]}`;
+            debug(errMsg);
             node.error(errMsg);
             done(errMsg);
             return;
           }
 
-          ocpp2[msgAction] = msg.payload.command; // || node.command;
+          ocpp2[MSGACTION] = msg.payload.command; // || node.command;
 
-          ocpp2[msgRequestPayload] = msg.payload.data || {}; // cmddata || {};
-          if (!ocpp2[msgRequestPayload]) {
+          ocpp2[MSGREQPAYLOAD] = msg.payload.data || {}; // cmddata || {};
+          if (!ocpp2[MSGREQPAYLOAD]) {
             const errStr = "ERROR: Missing Data in JSON request message";
             node.error(errStr);
-            done(errStr);
             debug(errStr);
+            done(errStr);
             return;
           }
 
-          let id = ocpp2[msgId];
+          let id = ocpp2[MSGID];
           let c = {
             cbId: msg.payload.cbId,
-            command: ocpp2[msgAction],
+            command: ocpp2[MSGACTION],
             time: new Date(),
           };
 
@@ -593,23 +616,24 @@ module.exports = function (RED) {
           let ocpp_msg = JSON.stringify(ocpp2);
           debug(`Sending message: ${ocpp_msg}`);
           ws.send(ocpp_msg);
-          log_ocpp_msg(ocpp2);
 
           node.status({
             fill: "green",
             shape: "dot",
-            text: `REQ out: ${ocpp2[msgAction]}`,
+            text: `REQ out: ${ocpp2[MSGACTION]}`,
           });
         } else {
           // Assuming the call is a RESPONSE to an existing REQUEST
-          ocpp2[msgResponsePayload] = msg.payload.data || {};
-          ocpp2[msgId] = msg.ocpp.MessageId;
+          ocpp2[MSGRESPAYLOAD] = msg.payload.data || {};
+          ocpp2[MSGID] = msg.ocpp.MessageId;
 
-          if (cmdIdMap.has(ocpp2[msgId])) {
+          log_ocpp_msg(ocpp2, "CS");
+
+          if (cmdIdMap.has(ocpp2[MSGID])) {
             // Check valididty of the command schema
             //
-            let msgAction = cmdIdMap.get(ocpp2[msgId]).command;
-            let schemaName = `${msgAction}Response.json`;
+            let MSGACTION = cmdIdMap.get(ocpp2[MSGID]).command;
+            let schemaName = `${MSGACTION}Response.json`;
 
             let schemaPath = path.join(__dirname, "schemas", schemaName);
 
@@ -618,38 +642,39 @@ module.exports = function (RED) {
             if (fs.existsSync(schemaPath)) {
               let schema = JSON.parse(fs.readFileSync(schemaPath, "utf8"));
 
-              let val = schema_val.validate(ocpp2[msgResponsePayload], schema);
+              let val = schema_val.validate(ocpp2[MSGRESPAYLOAD], schema);
 
               if (val.errors.length > 0) {
                 //val.errors.forEach( (x) => { node.error({x}) });
                 let invalidOcpp2 = val.errors;
+                debug("*********INVALID MESSAGE FORMAT************");
+                debug(JSON.stringify(ocpp2));
                 done(invalidOcpp2);
                 node.error({ invalidOcpp2 });
                 return;
               }
             } else {
-              let errMsg = `Invalid OCPP2.0.1 command: ${msgAction}`;
+              let errMsg = `Invalid OCPP2.0.1 command: ${MSGACTION}`;
               node.error(errMsg);
               done(errMsg);
               return;
             }
           } else {
-            let msgError = `Target message Id is missing or expired: ${ocpp2[msgId]}`;
+            let msgError = `Target message Id is missing or expired: ${ocpp2[MSGID]}`;
             node.error(msgError);
             done(msgError);
             return;
           }
 
-          cmdIdMap.delete(ocpp2[msgId]);
+          cmdIdMap.delete(ocpp2[MSGID]);
           let ocpp_msg = JSON.stringify(ocpp2);
           debug(`Sending message: ${ocpp_msg}`);
           ws.send(ocpp_msg, ocpp_msg);
-          log_ocpp_msg(ocpp2);
 
           node.status({
             fill: "green",
             shape: "dot",
-            text: `RES out: ${msgAction}`,
+            text: `RES out: ${MSGACTION}`,
           });
         }
       }
