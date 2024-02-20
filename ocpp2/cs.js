@@ -112,6 +112,8 @@ module.exports = function (RED) {
     };
 
     function log_ocpp_msg(ocpp_msg, msgFrom) {
+      return;
+      /*
       if (node.logging_enabled) {
         debug(`node.logging_enabled = ${node.logging_enabled}`);
         let msg = {
@@ -121,6 +123,7 @@ module.exports = function (RED) {
         };
         node.send([null, null, msg]);
       }
+      */
     }
 
     function reconn_debug() {

@@ -30,28 +30,29 @@
       ws_rt_rnd_range: { value: 2, required: true },
       auto_connect: { value: true },
       ocpp_logging: { value: false },
-      outputs: { value: 1 },
+      //outputs: { value: 3 },
     },
     credentials: {
       csms_pw: { type: "password", required: true },
     },
     inputs: 1,
-    //outputs: 3,
+    outputs: 2,
     icon: "cs.svg",
     label: function () {
       return this.name || this.cbId || "CS";
     },
-    outputLabels: ["all", "link call", "ocpp log"],
+    //outputLabels: ["all", "link call", "ocpp log"],
     //Functions
     oneditprepare: function () {
       var node = this;
-      node.outputs = $("#node-input-ocpp_logging").prop("checked") ? 3 : 2;
+      //node.outputs = $("#node-input-ocpp_logging").prop("checked") ? 3 : 2;
       $("#node-input-ocpp_logging").change(function () {
-        node.outputs = this.checked ? 3 : 2;
+        //node.outputs = this.checked ? 3 : 2;
       });
     },
     oneditsave: function () {
-      node.outputs = $("#node-input-ocpp_logging").prop("checked") ? 3 : 2;
+      var node = this;
+      //node.outputs = $("#node-input-ocpp_logging").prop("checked") ? 3 : 2;
     },
   });
 </script>
