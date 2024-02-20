@@ -3,6 +3,7 @@
     text-decoration: underline;
     font-weight: bold;
     margin-top: 5px;
+    margin-bottom: 5px;
   }
   .bordered {
     padding-left: 12px;
@@ -102,7 +103,7 @@
 <script type="text/markdown" data-help-name="CS">
   OCPP 2.0.1 Charging Station (CS) messaging node.
 
-  This node handles connecting, sending, and receiving valid OCPP 2.0.1 messages to an OCPP 2.0.1 CMSM
+  This node handles connecting, sending, and receiving valid OCPP 2.0.1 messages to an OCPP 2.0.1 CSMS
 
   ### Inputs
 
@@ -222,7 +223,7 @@
 
   Logging can be enabled the config dialog for the node. When enabled, and extra port is added to the CS node (port 3).
   The output of the port is the raw OCPP message being sent and received to the node. It is the flow designers responsibility
-  on how to deal with that data. The OCPP message is output payload of message. You may wish to log the output to a **write file** node,
+  on how to deal with that data. The OCPP message is output in the payload of the message. You may wish to log the output to a **write file** node,
   send it to MQTT, or send it to a logging service or node.
 
   ## **WHAT THIS NODE DOES NOT DO**

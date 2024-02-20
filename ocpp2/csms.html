@@ -1,100 +1,242 @@
 <style>
-    .header {
-        text-decoration: underline;
-        font-weight: bold;
-        margin-top: 5px;
-    }
-    .bordered {
-        padding-left: 12px;
-        padding-top: 4px;
-        border: 1px solid lightgrey;
-        box-sizing: border-box;
-    }
+  .header {
+    text-decoration: underline;
+    font-weight: bold;
+    margin-top: 5px;
+    margin-bottom: 5px;
+  }
+  .bordered {
+    padding-left: 12px;
+    padding-top: 4px;
+    border: 1px solid lightgrey;
+    box-sizing: border-box;
+  }
 </style>
 
 <script type="text/javascript">
-    RED.nodes.registerType('CSMS', {
-        category: 'OCPP',
-        color: '#16ccff',
-        defaults: {
-            name: {value: "", required: false},
-            port: {value: "", required: true, validate: RED.validators.number()},
-            path: {value: "", required: false},
-            ws_user: { value: "", required: true},
-            ws_pw: { value: "", required: true},
-            log: { value: false, required: true },
-            logpath: {value: "", required: false}
-        },
-        credentials: {
-            basic_auths: {type: 'text', required: true},
-        },
-        inputs: 1,
-        outputs: 2,
-        icon: "csms.svg",
-        label: function() {
-            return this.name||"CSMS";
-        },
-        oneditprepare: function() {
-          $("#node-input-basic_auths").typedInput(
-          {
-            type: "json",
-            types: ["json"]
-          });
-        }
+  RED.nodes.registerType("CSMS", {
+    category: "OCPP",
+    color: "#16ccff",
+    defaults: {
+      name: { value: "", required: false },
+      port: { value: "", required: true, validate: RED.validators.number() },
+      path: { value: "", required: false },
+      ocpp_logging: { value: false },
+      outputs: { value: 1 },
+    },
+    credentials: {
+      basic_auths: { type: "text", required: true },
+    },
+    inputs: 1,
+    //outputs: 2,
+    icon: "csms.svg",
+    label: function () {
+      return this.name || "CSMS";
+    },
+    oneditprepare: function () {
+      var node = this;
+      node.outputs = $("#node-input-ocpp_logging").prop("checked") ? 3 : 2;
+      $("#node-input-ocpp_logging").change(function () {
+        node.outputs = this.checked ? 3 : 2;
+      });
 
-    });
-
+      $("#node-input-basic_auths").typedInput({
+        type: "json",
+        types: ["json"],
+      });
+    },
+    oneditsave: function () {
+      node.outputs = $("#node-input-ocpp_logging").prop("checked") ? 3 : 2;
+    },
+  });
 </script>
 
 <script type="text/x-red" data-template-name="CSMS">
 
     <div class="form-row">
-        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
-        <input type="text" id="node-input-name" placeholder="Name (defaults to OCPP Server:<PORT>)" >
+        <label for="node-input-name"><i class="fa fa-id-card-o"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name (defaults to cbId)" >
     </div>
-    
+
     <div class="form-row">
-            <label for="node-input-port"><i class="icon-tag"></i> Port</label>
-            <input type="number" id="node-input-port" placeholder="Port Number (example: 8080)" />
+      <label for="node-input-port"><i class="fa fa-hashtag"></i> Port</label>
+      <input type="number" id="node-input-port" placeholder="Port Number (example: 8080)" />
     </div>
     <div id="container16j" class="form-row">
-      <label for="node-input-path" ><i class="icon-globe"></i> Path</label>
+      <label for="node-input-path" ><i class="fa fa-globe"></i> Path</label>
       <input type="text" id="node-input-path" placeholder="CSMS url path (example: /ocpp2)">
     </div>
-    <div class="header">Authentication</div>
-    <div id="container16j" class="form-row">
-      <label for="node-input-ws_user"<i class="icon-globe"></i> Login</label>
-      <input type="text" id="node-input-ws_user" placeholder="username">
-    </div>
-    <div id="container16j" class="form-row">
-      <label for="node-input-ws_pw" ><i class="icon-globe"></i> Password</label>
-      <input type="password" id="node-input-ws_pw" placeholder="password">
-    </div>
 
-<div id="container16j" class="form-row">
-  <label for="node-input-basic_auths"><i class="icon-key"></i> CS Auth</label>
-  <input type="text" id="node-input-basic_auths" name="node-input-basic_auths">
-</div>
 
-    <div class="header">Logging</div>
-    <div class="bordered">
-        <div class="checkbox">
-            <label>
-                <input type="checkbox" value="" id="node-input-log"/>
-                logging enabled
-            </label>
-        </div>
-        <div id="containerlog" class="form-row">
-            <label for="node-input-pathlog" >
-                <i class="icon-globe"></i> Path
-            </label>
-            <input type="text" id="node-input-pathlog" placeholder="log file path and name" />
-        </div>
+  <div class="form-row">
+      <label for="node-input-ocpp_logging"><i class="icon-tag"></i> OCPP Logging</label>
+      <input type="checkbox" id="node-input-ocpp_logging" >
+  </div>
+    <div class="header">Authentication List</div>
+
+    <div class="form-row">
+      <label for="node-input-basic_auths"><i class="fa fa-key"></i> CS Auth</label>
+      <input type="text" id="node-input-basic_auths" name="node-input-basic_auths">
     </div>
 </script>
 
-<script type="text/x-red" data-help-name="CSMS">
-    <p>OCPP 2.0.1 CSMS</p>
+<script type="text/markdown" data-help-name="CSMS">
+  OCPP 2.0.1 Charging Station Management System (CSMS) messaging node.
 
+  This node handles connecting, sending, and receiving valid OCPP 2.0.1 messages to an OCPP 2.0.1 Charge Station (CS)
+
+  ### Inputs
+
+  1. OCPP messages in `msg.payload`
+     : command (string) : Valid OCPP 2.x command used in REQUESTS or CONTROL commands
+     : msgType (int) : 2 = REQUEST ( _default_ ), 3 = RESPONSE, 4 = CALLERROR, 99 = Control
+     : data (object) : Valid OCPP 2.x command data, or control data
+     : MessageId (string) : _optional_ user generated unique ID for REQUEST message
+     : cbId (string) : (chargeBoxId) for the REQUEST message
+     : customData (any) : _`IMPLEMENTATION PENDING`_ User custom data returned with matching RESPONSE message
+
+  ### Outputs
+
+  1. Standard Output (1)
+     : payload (object) : incoming OCPP REQUEST,RESPONSE,or CALLERROR messages
+     : ocpp (object) : Information about the OCPP message, including MessageId, cbId, commnad, and ocpp version
+
+  2. Linked Output (2)
+     : payload (object) : messages that should be passed to a node-red `link out node` set to "**Return to calling link node**", mainly incoming RESPONSE messages
+
+  3. OCPP Log Output (3)
+     : payload (object) : _`IMPLEMENTATION PENDING`_ Raw output of sent and received OCPP messages. Only visable/available if logging is enabled in config
+
+  ### Details
+
+  ## **OCPP MESSAGES**
+
+  OCPP message passing between your flows and the CSMS Node will be of `msgType` REQUEST (2) or RESPONSE (3), depending on if your flow is
+  sending or receiving an OCPP message. REQUEST messages are the default type and therefore do not require a `msgType` parameter.
+
+  REQUEST messages require a `msg.payload.cbId` to identify the target Charge Station since a CSMS can communicate with multiple CSs
+
+  Messages are validated (see **SCHEMA VALIDATION** section below )
+
+  Unique message IDs are automatically assigned to any outgoing REQUEST message. You may choose to override this by creating and
+  assigning your own `MessageId` in the payload. Internally, the node creates a UUID4 value and assigns it to the message if not given.
+
+  > **NOTE** _`IMPLEMENTATION PENDING`_ You may also wish to pass along additional information when sending a REQUEST that will be passed back to your flow when the
+  > associated RESPONSE is returned. Any data contained in the `customData` section of the payload is retained and returned in the RESPONSE message.
+
+  REQUEST messages that are sent directly into the CSMS node or from a `link out node`, and **not** through a `link call node`, will have their RESPONSE message output
+  from port 1 of the node.
+
+  REQUEST messages that that are input into the CSMS node via a `link call node` will have thier RESPONSE messages sent out of port 2. It
+  is ideal to connect a `link out node` to port 2 set to mode **Return to calling link node**
+
+  ## **NODE CONTROL MESSAGES**
+
+  Messages other than OCPP messages can be passed into the CSMS node. Those messages are referred to here as **CONTROL** messages.
+  They have meaning only to the internals of the CSMS node and are not transmitted to any CS. They may, however, cause actions that
+  cause standard OCPP message communication and network events to one or more CSs.
+
+  #### Connections
+
+  Ask the CSMS node to produce a list of all known connected CSs to `msg.payload.connections`
+
+  ```json
+  {
+    "msgType": 99,
+    "command": "connections"
+  }
+  ```
+
+  #### Commands
+
+  Ask the CSMS node to produce a list of all outstanding REQUESTS to `msg.payload.commands`.
+
+  ```json
+  {
+    "msgType": 99,
+    "command": "commands"
+  }
+  ```
+
+  #### Get Authorization List
+
+  Ask the CSMS node to produce a list of authorized CSs and their passwords to `msg.payload.auth_list`.
+  The list returned will be a key / value pair.
+
+  ```json
+  {
+    "msgType": 99,
+    "command": "get_auth_list"
+  }
+  ```
+
+  #### Set Authorization List
+
+  Ask the CSMS node set the list of authorized CSs and thier passwords. The list is passed in to `msg.payload.data`.
+  This list overwrites the existing list.
+  _No return message is produced._
+
+  ```json
+  {
+    "msgType": 99,
+    "command": "set_auth_list",
+    "data": {
+      "CS1": "password1111111",
+      "CS2": "password2222222"
+    }
+  }
+  ```
+
+  #### Get Authorized CS
+
+  Ask the CSMS node to return the current password of a single CS to `msg.payload.auth_cs`.
+  If passed in the name of a CS that isn't in the list, `msg.paylaod.auth_cs` will return **NOT FOUND**
+
+  ```json
+  {
+    "msgType": 99,
+    "command": "get_auth_cs",
+    "data": {
+      "name": "CS1"
+    }
+  }
+  ```
+
+  #### Set Authorized CS
+
+  Ask the CSMS node to set the password of an existing or new CS.
+  _No return msg is produced._
+
+  ```json
+  {
+    "msgType": 99,
+    "command": "get_auth_list",
+    "data": {
+      "name": "CS4",
+      "password": "CS4PassW0rd$"
+    }
+  }
+  ```
+
+  ## **SCHEMA VALIDATION**
+
+  Messages passed in to the CSMS node, as well as thouse received from connected CSs are validated to assure they follow the
+  proper format / schema. An ill-formed OCPP message will not be sent and a warning message will be posted to the
+  Node-Red debug pane and output.
+
+  ## **OCPP LOGGING**
+
+  _`PENDING IMPLEMENTATION`_
+
+  Logging can be enabled the config dialog for the node. When enabled, and extra port is added to the CSMS node (port 3).
+  The output of the port is the raw OCPP message being sent and received to the node. It is the flow designers responsibility
+  on how to deal with that data. The OCPP message is output payload of message. You may wish to log the output to a **write file** node,
+  send it to MQTT, or send it to a logging service or node.
+
+  ## **WHAT THIS NODE DOES NOT DO**
+
+  This node does not handle the logic involved in the proper operation of an OCPP 2.0.1 CSMS. Such logic is left to
+  the author of the flows using the node. Example flows are provided, many of which were developed to pass OCTT core tests.
+
+  The current release _ONLY_ supports **BASIC** authentication (security profile 1). Future updates will contaian enhanced security profiles.
 </script>
-
