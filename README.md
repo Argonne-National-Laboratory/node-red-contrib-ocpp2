@@ -2,8 +2,7 @@
 
 [![NPM](https://nodei.co/npm/node-red-contrib-ocpp2.png)](https://nodei.co/npm/node-red-contrib-ocpp2/)
 
-[Node-Red][4] nodes for communicating with Charge Systems (EVSEs) and Charge Station Central Managers via the [Open Charge Point 2.x Protocol][6] (hereafter OCPP). These node-red nodes
-allow you to take on the role of a Central System (CS) or Charge Point (CP).
+[Node-Red][4] nodes for communicating with Charge Systems (CSs) and Charge Station Central Managers (CSMS) via the [Open Charge Point 2.x Protocol][6] (hereafter OCPP). 
 
 Based on the [OCPP 2.0.1][6] specifications utilizing the JavaScript Object Notation (hereafter JSON) protocols.
 
@@ -96,7 +95,7 @@ Both nodes have multiple output ports, each with their own unique purpose.
 
 OCPP Request messges sent to the node can now contain a special parameter called `customData`. When the Request message is sent, the `customData` paramter is stored and held onto internally until a matching Response is received. The Response message is output, including the stored `customData` paramter. The paramter can be anything you want; a string, number, boolean, or object. 
 
-The `customData` parameter is not part of the `msg.payload`, but on the same level. Hence `msg.customData`
+The `customData` parameter is **not** part of `msg.payload`, but on the same level. Hence `msg.customData`
 
 Example:
 ```javascript
@@ -111,6 +110,7 @@ msg = {
 }
 
 ```
+
 A Response message given back to the flow would then contain the same `msg.customData` item with the same object. This allow a flow developer to provide hints/tags as to what to do next if a particular sequence of OCPP messages must be sent in partiular situations. They could make a decision by providing the *custom data* parameter to a switch node for example.
 
 
@@ -189,23 +189,34 @@ The `topic` will alway be set to the ChargeBoxID and message type. In the above 
 > Message responses have an expiration timeout. They must be sent within a certain amount of time of receiveing
 > the Request message or the Response message will not be sent. 
 
-- Node Command Messages
+- Node Control Messages
 
-The thrid type of message you can pass into a CS or CSMS node is a *Command Message*. These messages are not OCPP messagges, and they do not pass between a connected CS and CSMS. Instead they are ways of controlling the OCPP nodes or dynamically setting internal paraamters of the flow at run time (as opposed to settings in the config)
+The thrid type of message you can pass into a CS or CSMS node is a *Control Message*. These messages are not OCPP messagges, and they do not pass between a connected CS and CSMS. Instead they are ways of controlling the OCPP nodes or dynamically setting internal paraamters of the flow at run time (as opposed to settings in the config)
+
 ```javascript
 
 msg.payload = {
   "msgType": 4,        // required to identify this as a response to an existing request
-  "command": "doSomething" // Refer the the CS or CSMS specific section on Command Messages
-  "data": { "status": "Happy" }, // Command messages may or may not have associated data
+  "command": "doSomething" // Refer the the CS or CSMS specific section on Control Messages
+  "data": { "status": "Happy" }, // Control messages may or may not have associated data
 }
 ```
 
-For example, the CS node lets the flow developer await connection to a CSMS at flow startup and instead make the connection based on receiving a `connect` *Command message*. Refer to the example in the CS section.
+For example, the CS node lets the flow developer await connection to a CSMS at flow startup and instead make the connection based on receiving a `connect` *control message*. Refer to the example in the CS section.
 
+More information about *control messages* specific to both the [CS](#cs-node-control-messages) and [CSMS](#csms-node-control-messages) can be found in the relative sections of this document.
+
+
+**SCHEMA VALIDATION**
+
+  OCPP Messages passed in to the nodes, as well as those received from connected CS/CSMSs are validated to assure they follow the
+  proper format / schema. An ill-formatted OCPP message will not be sent and a warning message will be posted to the Node-Red debug pane and output. This will make it easier for the flow developer to discover early on if they are passing the proper data. OCPP 2.x message schemas can be located at the [OCA][6] website for reference.
 
 ## CS
 This section talks specifically about the CS (Charge Station) node.
+
+![CS Node](images/cs.png)
+
 ### Configuration
 ![CS Config](images/cs_config.png)
  - Name: Name shown on the node. Will default to the cbId if blank.
@@ -225,9 +236,76 @@ This section talks specifically about the CS (Charge Station) node.
 - Name: The name that shows in the dropdown list that identifies this CSMS URL setup
 - URL: The actual URL to the CSMS. Must be of either ws:// or wss:// type. URL includes any particular port number and route (for esample /ocpp). Do not include the CS cbid at the end of the route portion. That is automatically done by the node.
 
+### CS NODE CONTROL MESSAGES
+
+  Messages other than OCPP messages can be passed into the CS node. Those messages are referred to here as **CONTROL** messages.
+  They have meaning only to the internals of the CS node and are not transmitted to the CSMS. They may, however, cause actions that
+  cause standard OCPP message communication and network events to the CSMS. For example, connecting and disconnecting the unerlying
+  WebSocket connection.
+
+  > Control Messages must always have a `msgType: 99` in their payload along with a valid `command: "..."`
+  #### Connect
+
+  Ask the CS node to attempt to connect to the configured CSMS
+
+  ```json
+  {
+    "msgType": 99,
+    "command": "connect"
+  }
+  ```
+
+  more info can be passed in to the **data** object to cause a dynamic setup of the connection
+
+  ```json
+  {
+    "msgType": 99,
+    "command": "connect",
+    "data": {
+      "cbId": "aNewChargeBoxId",
+      "password": "aNewPassword",
+      "csmsUrl": "wss://www.newurl.com:8888/ocpp/"
+    }
+  }
+  ```
+
+  #### Disconnect
+
+  Ask the CS node to close the Websocket connection to the CSMS
+
+  ```json
+  {
+    "msgType": 99,
+    "command": "close"
+  }
+  ```
+
+  #### Retry Backoff
+
+  Change the OCPP variables related to retrying a dropped WebSocket connection.
+  Refer to the OCPP 2.0.1 documetation for the **OCPPCommCtrlr** device model.
+  One or more of the data parameters should be present in the **data** object.
+
+  ```json
+  {
+    "msgType": 99,
+    "command": "retrybackoff",
+    "data": {
+      "RetryBackoffWaitMinimum": 20,
+      "RetryBackoffRandomRange": 5,
+      "RetryBackoffRepeatTime": 3
+    }
+  }
+  ```
+
 ---
 ## CSMS
 
+This section talks specifically about the CSMS (Charge Station Management System) node.
+
+![CS Node](images/csms2.png)
+
+### Configuration
 ![CSMS Config](images/csms_config.png)
 - Name: The name that is displayed on the flow node.
 - Port: Must contain a port number that isn't being used on the same system Node-Red is running on (for example, can't be port 1880)
@@ -239,6 +317,97 @@ This section talks specifically about the CS (Charge Station) node.
         - The values represent the password for that CS.
         - These values are stored securely in Node-Red and not saved when exported
         - See Set/Get_Auth_List/CS for dynamically setting these
+
+### CSMS NODE CONTROL MESSAGES
+
+  Messages other than OCPP messages can be passed into the CSMS node. Those messages are referred to here as **CONTROL** messages.
+  They have meaning only to the internals of the CSMS node and are not transmitted to any CS. They may, however, cause actions that
+  cause standard OCPP message communication and network events to one or more CSs.
+
+> Control Messages must always have a `msgType: 99` in their payload along with a valid `command: "..."
+
+  #### Connections
+
+  Ask the CSMS node to produce a list of all known connected CSs to `msg.payload.connections`
+
+  ```json
+  {
+    "msgType": 99,
+    "command": "connections"
+  }
+  ```
+
+  #### Commands
+
+  Ask the CSMS node to produce a list of all outstanding REQUESTS to `msg.payload.commands`.
+
+  ```json
+  {
+    "msgType": 99,
+    "command": "commands"
+  }
+  ```
+
+  #### Get Authorization List
+
+  Ask the CSMS node to produce a list of authorized CSs and their passwords to `msg.payload.auth_list`.
+  The list returned will be a key / value pair.
+
+  ```json
+  {
+    "msgType": 99,
+    "command": "get_auth_list"
+  }
+  ```
+
+  #### Set Authorization List
+
+  Ask the CSMS node set the list of authorized CSs and thier passwords. The list is passed in to `msg.payload.data`.
+  This list overwrites the existing list.
+  _No return message is produced._
+
+  ```json
+  {
+    "msgType": 99,
+    "command": "set_auth_list",
+    "data": {
+      "CS1": "password1111111",
+      "CS2": "password2222222"
+    }
+  }
+  ```
+
+  #### Get Authorized CS
+
+  Ask the CSMS node to return the current password of a single CS to `msg.payload.auth_cs`.
+  If passed in the name of a CS that isn't in the list, `msg.paylaod.auth_cs` will return **NOT FOUND**
+
+  ```json
+  {
+    "msgType": 99,
+    "command": "get_auth_cs",
+    "data": {
+      "name": "CS1"
+    }
+  }
+  ```
+
+  #### Set Authorized CS
+
+  Ask the CSMS node to set the password of an existing or new CS.
+  _No return msg is produced._
+
+  ```json
+  {
+    "msgType": 99,
+    "command": "get_auth_list",
+    "data": {
+      "name": "CS4",
+      "password": "CS4PassW0rd$"
+    }
+  }
+  ```
+
 ---
 
 ## Examples
