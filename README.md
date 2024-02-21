@@ -254,7 +254,7 @@ You can import the examples for these nodes (and other packages) via the Node-Re
 [Bryan Nystrom][11]  
 
 [Argonne National Laboratory][10]  
-![Argonne National Laboratory Logo](images/nav-argonne-logo.png)
+![Argonne National Laboratory Logo](images/ANL_RGB.png)
 
 
 [1]: https://nodejs.org/
