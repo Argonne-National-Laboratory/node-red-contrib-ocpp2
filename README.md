@@ -221,7 +221,7 @@ This section talks specifically about the CS (Charge Station) node.
     - Times to inc: The number of times to each retry waits an additional "Min" seconds
     - Max Random Range: a random number of seconds to add to wait time. (from 0 to value)
 
-![CSMS URL Config](csms_url_config.png)
+![CSMS URL Config](images/csms_url_config.png)
 - Name: The name that shows in the dropdown list that identifies this CSMS URL setup
 - URL: The actual URL to the CSMS. Must be of either ws:// or wss:// type. URL includes any particular port number and route (for esample /ocpp). Do not include the CS cbid at the end of the route portion. That is automatically done by the node.
 
@@ -247,14 +247,14 @@ In the root of the OCPP2 node module folder is a folder named examples. This is 
 
 You can import the examples for these nodes (and other packages) via the Node-Red main **Import** menu. Use the *Examples* tab 
 
-![Node-Red import examples](example_import.png)
+![Node-Red import examples](images/example_import.png)
 
 # Author
 
 [Bryan Nystrom][11]  
 
 [Argonne National Laboratory][10]  
-![Argonne National Laboratory Logo](<nav-argonne-logo (Custom).png>)
+![Argonne National Laboratory Logo](images/nav-argonne-logo.png)
 
 
 [1]: https://nodejs.org/
