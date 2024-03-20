@@ -32,8 +32,8 @@ const CBIDCONPOSTFIX = "::CONNECTED";
 const MSGTYPE = 0;
 const MSGID = 1;
 const MSGACTION = 2;
-const MSGREQUESTPAYLOAD = 3;
-const MSGRESPONSEPAYLOAD = 2;
+const MSGREQPAYLOAD = 3;
+const MSGRESPAYLOAD = 2;
 
 const REQUEST = 2;
 const RESPONSE = 3;
@@ -210,7 +210,7 @@ module.exports = function (RED) {
 
           switch (ocpp2[MSGTYPE]) {
             case REQUEST:
-              msg.payload.data = ocpp2[MSGREQUESTPAYLOAD] || {};
+              msg.payload.data = ocpp2[MSGREQPAYLOAD] || {};
               msg.payload.command = ocpp2[MSGACTION] || null;
               msg.payload.MessageId = ocpp2[MSGID];
               msg.ocpp.MessageId = ocpp2[MSGID];
@@ -235,11 +235,14 @@ module.exports = function (RED) {
               );
               break;
             case RESPONSE:
-              msg.payload.data = ocpp2[MSGRESPONSEPAYLOAD] || {};
+              msg.payload.data = ocpp2[MSGRESPAYLOAD] || {};
               if (cmdIdMap.has(ocpp2[MSGID])) {
                 let c = cmdIdMap.get(ocpp2[MSGID]);
 
                 msg.payload.command = c.command;
+                if (Object.prototype.hasOwnProperty.call(c, "customData")) {
+                  msg.customData = c.customData;
+                }
                 if (c.hasOwnProperty("_linkSource")) {
                   // This provides a deep copoy
                   msg._linkSource = JSON.parse(JSON.stringify(c._linkSource));
@@ -271,7 +274,7 @@ module.exports = function (RED) {
           if (fs.existsSync(schemaPath)) {
             let schema = JSON.parse(fs.readFileSync(schemaPath, "utf8"));
 
-            let val = schema_val.validate(ocpp2[MSGREQUESTPAYLOAD], schema);
+            let val = schema_val.validate(ocpp2[MSGREQPAYLOAD], schema);
 
             if (val.errors.length > 0) {
               let invalidOcpp2 = val.errors;
@@ -418,7 +421,7 @@ module.exports = function (RED) {
 
         if (ocpp2[MSGTYPE] == REQUEST) {
           ocpp2[MSGACTION] = msg.payload.command || null;
-          ocpp2[MSGREQUESTPAYLOAD] = msg.payload.data || {};
+          ocpp2[MSGREQPAYLOAD] = msg.payload.data || {};
           ocpp2[MSGID] = msg.payload.MessageId || crypto.randomUUID();
 
           // Check for missing command in object
@@ -440,7 +443,7 @@ module.exports = function (RED) {
           if (fs.existsSync(schemaPath)) {
             let schema = JSON.parse(fs.readFileSync(schemaPath, "utf8"));
 
-            let val = schema_val.validate(ocpp2[MSGREQUESTPAYLOAD], schema);
+            let val = schema_val.validate(ocpp2[MSGREQPAYLOAD], schema);
 
             if (val.errors.length > 0) {
               let invalidOcpp2 = val.errors;
@@ -465,8 +468,8 @@ module.exports = function (RED) {
           //            }
           //          }
 
-          ocpp2[MSGREQUESTPAYLOAD] = msg.payload.data || {}; // cmddata || {};
-          if (!ocpp2[MSGREQUESTPAYLOAD]) {
+          ocpp2[MSGREQPAYLOAD] = msg.payload.data || {}; // cmddata || {};
+          if (!ocpp2[MSGREQPAYLOAD]) {
             const errStr = "ERROR: Missing Data in JSON request message";
             node.error(errStr);
             done(errStr);
@@ -516,7 +519,7 @@ module.exports = function (RED) {
         } else {
           // Assuming the call is a RESPONSE to an existing REQUEST
 
-          ocpp2[MSGRESPONSEPAYLOAD] = msg.payload.data || {};
+          ocpp2[MSGRESPAYLOAD] = msg.payload.data || {};
           ocpp2[MSGID] = msg.ocpp.MessageId;
 
           let msgAction = "INVALID";
@@ -538,7 +541,7 @@ module.exports = function (RED) {
             if (fs.existsSync(schemaPath)) {
               let schema = JSON.parse(fs.readFileSync(schemaPath, "utf8"));
 
-              let val = schema_val.validate(ocpp2[MSGRESPONSEPAYLOAD], schema);
+              let val = schema_val.validate(ocpp2[MSGRESPAYLOAD], schema);
 
               if (val.errors.length > 0) {
                 //val.errors.forEach( (x) => { node.error({x}) });
