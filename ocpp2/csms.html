@@ -33,6 +33,7 @@
     label: function () {
       return this.name || "CSMS";
     },
+    outputLabels: ["all", "link call", "ocpp log"],
     oneditprepare: function () {
       var node = this;
       node.outputs = $("#node-input-ocpp_logging").prop("checked") ? 3 : 2;
